@@ -24,6 +24,14 @@
         "additionalProperties": { "anyOf": [{ "type": "string", "maxLength": 4096 }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }] }
       }
     },
+    "BusinessGoalType": {"enum": ["DATA_RELIABILITY", "ANALYTICS_TRUST", "ORDER_FULFILLMENT", "INVENTORY_ACCURACY", "COST_CONTROL", "CUSTOM"]},
+    "BusinessGoal": {"type": "object", "additionalProperties": false, "required": ["id", "title", "type", "expectedOutcome", "priority"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}, "title": {"type": "string", "minLength": 1, "maxLength": 100}, "type": {"$ref": "#/$defs/BusinessGoalType"}, "expectedOutcome": {"type": "string", "minLength": 1, "maxLength": 1000}, "priority": {"enum": ["HIGH", "MEDIUM", "LOW"]}, "sourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}}}},
+    "MetricDefinitionInput": {"type": "object", "additionalProperties": false, "required": ["id", "name"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}, "name": {"type": "string", "minLength": 1, "maxLength": 100}, "businessDefinition": {"type": "string", "minLength": 0, "maxLength": 2000}, "owner": {"type": "string", "minLength": 0, "maxLength": 120}, "timeZone": {"type": "string", "minLength": 0, "maxLength": 80}, "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"}, "formulaDescription": {"type": "string", "minLength": 0, "maxLength": 2000}, "sourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}}}},
+    "MetricDefinition": {"type": "object", "additionalProperties": false, "required": ["id", "name", "businessDefinition", "owner", "timeZone", "currency", "formulaDescription", "sourceIds", "status", "stateVersion", "calculationStatus"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}, "name": {"type": "string", "minLength": 1, "maxLength": 100}, "businessDefinition": {"type": "string", "minLength": 0, "maxLength": 2000}, "owner": {"type": "string", "minLength": 0, "maxLength": 120}, "timeZone": {"type": "string", "minLength": 0, "maxLength": 80}, "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"}, "formulaDescription": {"type": "string", "minLength": 0, "maxLength": 2000}, "sourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}}, "status": {"enum": ["DRAFT", "CONFIRMED"]}, "stateVersion": {"type": "integer", "minimum": 1}, "confirmedBy": {"type": ["string", "null"]}, "confirmedAt": {"type": ["string", "null"], "format": "date-time"}, "calculationStatus": {"const": "NOT_COMPUTED"}}, "allOf": [{"if": {"properties": {"status": {"const": "CONFIRMED"}}, "required": ["status"]}, "then": {"required": ["confirmedBy", "confirmedAt"], "properties": {"confirmedBy": {"type": "string", "minLength": 1, "maxLength": 200}, "confirmedAt": {"$ref": "#/$defs/Timestamp"}, "businessDefinition": {"type": "string", "minLength": 1, "maxLength": 2000}, "owner": {"type": "string", "minLength": 1, "maxLength": 120}, "timeZone": {"type": "string", "minLength": 1, "maxLength": 80}, "formulaDescription": {"type": "string", "minLength": 1, "maxLength": 2000}, "sourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}, "minItems": 1}}}}]},
+    "SaveBusinessBriefCommand": {"type": "object", "additionalProperties": false, "required": ["expectedStateVersion", "expectedBriefVersion", "enterpriseName"], "properties": {"expectedStateVersion": {"$ref": "#/$defs/Version"}, "expectedBriefVersion": {"$ref": "#/$defs/Version"}, "enterpriseName": {"type": "string", "minLength": 1, "maxLength": 120}, "businessDescription": {"type": "string", "minLength": 0, "maxLength": 2000}, "goals": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/BusinessGoal"}}, "includedSourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}}, "metrics": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/MetricDefinitionInput"}}}},
+    "ConfirmMetricDefinitionCommand": {"type": "object", "additionalProperties": false, "required": ["expectedStateVersion", "expectedBriefVersion", "expectedMetricVersion"], "properties": {"expectedStateVersion": {"$ref": "#/$defs/Version"}, "expectedBriefVersion": {"type": "integer", "minimum": 1}, "expectedMetricVersion": {"type": "integer", "minimum": 1}}},
+    "BusinessBrief": {"type": "object", "additionalProperties": false, "required": ["version", "enterpriseName", "businessDescription", "goals", "includedSourceIds", "metrics", "updatedAt", "updatedBy", "modelContextExportEnabled"], "properties": {"version": {"type": "integer", "minimum": 1}, "enterpriseName": {"type": "string", "minLength": 1, "maxLength": 120}, "businessDescription": {"type": "string", "minLength": 0, "maxLength": 2000}, "goals": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/BusinessGoal"}}, "includedSourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}}, "metrics": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/MetricDefinition"}}, "updatedAt": {"$ref": "#/$defs/Timestamp"}, "updatedBy": {"$ref": "#/$defs/Id"}, "modelContextExportEnabled": {"const": false}}},
+    "BusinessBriefHistory": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/BusinessBrief"}},
     "VersionCommand": {
       "type": "object", "additionalProperties": false,
       "required": ["expectedStateVersion"],
@@ -93,6 +101,8 @@
       "type": "object", "additionalProperties": false,
       "required": ["stateVersion", "mode", "sources", "assets", "scans", "findings", "assistants", "tasks", "comments", "messages", "audit", "capabilities"],
       "properties": {
+        "businessBrief": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/BusinessBrief"}]},
+
         "stateVersion": { "$ref": "#/$defs/Version" }, "mode": { "const": "LOCAL_PERSISTENT" },
         "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceView" } },
         "assets": { "type": "array", "items": { "$ref": "#/$defs/AssetView" } },
@@ -168,12 +178,25 @@
     "AssistantView": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "role", "name", "responsibility", "status", "method", "findingIds", "taskIds"],
-      "properties": { "id": { "$ref": "#/$defs/Id" }, "role": { "type": "string", "enum": ["OPERATIONS", "ANALYSIS", "DECISION"] }, "name": { "type": "string" }, "responsibility": { "type": "string" }, "status": { "const": "READY" }, "method": { "$ref": "#/$defs/AssistantMethod" }, "findingIds": { "$ref": "#/$defs/Ids" }, "taskIds": { "$ref": "#/$defs/Ids" } }
+      "properties": {
+        "focusGoalIds": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}},
+        "scopeSourceIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/Id"}},
+        "scopeNotice": {"type": "string", "minLength": 0, "maxLength": 2000},
+ "id": { "$ref": "#/$defs/Id" }, "role": { "type": "string", "enum": ["OPERATIONS", "ANALYSIS", "DECISION"] }, "name": { "type": "string" }, "responsibility": { "type": "string" }, "status": { "const": "READY" }, "method": { "$ref": "#/$defs/AssistantMethod" }, "findingIds": { "$ref": "#/$defs/Ids" }, "taskIds": { "$ref": "#/$defs/Ids" } }
     },
     "TaskView": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "assistantId", "findingId", "title", "description", "status", "ownerId", "createdAt", "updatedAt", "completionNote", "evidenceRefs", "stateVersion", "verifiedBy"],
-      "properties": { "id": { "$ref": "#/$defs/Id" }, "assistantId": { "$ref": "#/$defs/Id" }, "findingId": { "$ref": "#/$defs/Id" }, "title": { "type": "string" }, "description": { "type": "string" }, "status": { "$ref": "#/$defs/TaskStatus" }, "ownerId": { "type": ["string", "null"] }, "createdAt": { "$ref": "#/$defs/Timestamp" }, "updatedAt": { "$ref": "#/$defs/Timestamp" }, "completionNote": { "type": ["string", "null"] }, "evidenceRefs": { "$ref": "#/$defs/Ids" }, "stateVersion": { "$ref": "#/$defs/Version" }, "verifiedBy": { "type": ["string", "null"] } }
+      "properties": {
+        "goalIds": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}},
+        "inCurrentScope": {"type": "boolean"},
+        "scopeReason": {"type": "string", "minLength": 0, "maxLength": 2000},
+        "businessBriefVersion": {"type": ["integer", "null"], "minimum": 1},
+        "createdUnderBriefVersion": {"type": ["integer", "null"], "minimum": 1},
+        "priorityRank": {"type": "integer", "minimum": 0},
+        "priorityReason": {"type": "string", "minLength": 0, "maxLength": 2000},
+        "currentFindingId": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/Id"}]},
+ "id": { "$ref": "#/$defs/Id" }, "assistantId": { "$ref": "#/$defs/Id" }, "findingId": { "$ref": "#/$defs/Id" }, "title": { "type": "string" }, "description": { "type": "string" }, "status": { "$ref": "#/$defs/TaskStatus" }, "ownerId": { "type": ["string", "null"] }, "createdAt": { "$ref": "#/$defs/Timestamp" }, "updatedAt": { "$ref": "#/$defs/Timestamp" }, "completionNote": { "type": ["string", "null"] }, "evidenceRefs": { "$ref": "#/$defs/Ids" }, "stateVersion": { "$ref": "#/$defs/Version" }, "verifiedBy": { "type": ["string", "null"] } }
     },
     "TaskComment": {
       "type": "object", "additionalProperties": false,

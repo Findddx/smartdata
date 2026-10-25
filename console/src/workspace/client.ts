@@ -1,4 +1,10 @@
-import type { SourceDraft, WorkspaceState, WorkspaceReport } from "./types";
+import type {
+  SourceDraft,
+  WorkspaceState,
+  WorkspaceReport,
+  BusinessBriefCommand,
+  BusinessBrief,
+} from "./types";
 import { localRolesEnabled } from "./localRoles";
 
 const ROOT = "/api/v1/workspace";
@@ -39,6 +45,20 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 export const workspaceClient = {
+  saveBusinessBrief: (body: BusinessBriefCommand) =>
+    request<WorkspaceState>("/business-brief", body),
+  confirmMetric: (
+    id: string,
+    expectedStateVersion: number,
+    expectedBriefVersion: number,
+    expectedMetricVersion: number,
+  ) =>
+    request<WorkspaceState>(
+      `/business-brief/metrics/${encodeURIComponent(id)}/confirm`,
+      { expectedStateVersion, expectedBriefVersion, expectedMetricVersion },
+    ),
+  businessBriefHistory: () =>
+    request<BusinessBrief[]>("/business-brief/history"),
   get: () => request<WorkspaceState>(""),
   bootstrap: (version: number) =>
     request<WorkspaceState>("/demo/bootstrap", {

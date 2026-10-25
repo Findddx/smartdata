@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$nodeDownloader = Get-Command node -ErrorAction SilentlyContinue
 
 function Read-Checksums([string] $Path) {
     $document = [xml](Get-Content -LiteralPath $Path -Raw)
@@ -65,7 +66,14 @@ foreach ($entry in $additions) {
         # certificate checks. A failed final handshake must still fail the gate.
         for ($downloadAttempt = 1; $downloadAttempt -le 3; $downloadAttempt++) {
             try {
-                Invoke-WebRequest -Uri $url -OutFile $temporaryArtifact -UseBasicParsing -TimeoutSec 45 -MaximumRedirection 0
+                if ($nodeDownloader) {
+                    & $nodeDownloader.Source (Join-Path $PSScriptRoot 'download-maven-artifact.mjs') $url $temporaryArtifact
+                    if ($LASTEXITCODE -ne 0) { throw "Official Maven download failed: $($entry.Artifact)" }
+                } else {
+                    $downloadOptions = @{ Uri=$url; OutFile=$temporaryArtifact; UseBasicParsing=$true; TimeoutSec=45; MaximumRedirection=0 }
+                    if ((Get-Command Invoke-WebRequest).Parameters.ContainsKey('OperationTimeoutSeconds')) { $downloadOptions.OperationTimeoutSeconds=45 }
+                    Invoke-WebRequest @downloadOptions
+                }
                 break
             } catch {
                 if ($downloadAttempt -eq 3) { throw }

@@ -32,6 +32,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Target,
   Sparkles,
   UsersRound,
   Workflow,
@@ -49,6 +50,11 @@ import {
 import { workspaceClient } from "./client";
 import { localRolesEnabled } from "./localRoles";
 import { DataFlow } from "./DataFlow";
+import {
+  BusinessBriefPage,
+  BusinessContextSummary,
+  type BusinessEditorSnapshot,
+} from "./BusinessBrief";
 import { Dialog } from "./Dialog";
 import { SourceDialog } from "./SourceDialog";
 import type {
@@ -78,6 +84,7 @@ const LOCAL_ACTORS = [
 
 const NAV = [
   { id: "overview", label: "工作空间", icon: LayoutGrid },
+  { id: "business", label: "业务约定", icon: Target },
   { id: "sources", label: "数据连接", icon: Link2 },
   { id: "assets", label: "数据资产", icon: Database },
   { id: "findings", label: "诊断发现", icon: Fingerprint },
@@ -86,6 +93,7 @@ const NAV = [
 ] as const;
 const TITLES: Record<WorkspaceViewId, string> = {
   overview: "工作空间",
+  business: "业务约定",
   sources: "数据连接",
   assets: "数据资产",
   findings: "诊断发现",
@@ -198,6 +206,7 @@ export function Workspace() {
   );
   const [navOpen, setNavOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
+  const businessEditor = useRef<BusinessEditorSnapshot | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [replaceSource, setReplaceSource] = useState<
     WorkspaceSource | undefined
@@ -244,6 +253,15 @@ export function Workspace() {
   useEffect(() => {
     localStorage.setItem("smartdata.theme", theme);
   }, [theme]);
+  useEffect(() => {
+    const leaving = (event: BeforeUnloadEvent) => {
+      if (!businessEditor.current?.dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", leaving);
+    return () => window.removeEventListener("beforeunload", leaving);
+  }, []);
   useEffect(() => {
     const main = document.getElementById("sd-main");
     if (main) main.scrollTop = 0;
@@ -492,7 +510,11 @@ export function Workspace() {
         </button>
         <div className="sd-nav-label">工作台</div>
         <nav aria-label="主导航">
-          {NAV.map((item) => (
+          {NAV.filter(
+            (item) =>
+              item.id !== "business" ||
+              (!!storedWorkspace && "businessBrief" in storedWorkspace),
+          ).map((item) => (
             <button
               type="button"
               key={item.id}
@@ -733,6 +755,39 @@ export function Workspace() {
                     onConnect={() => setSourceOpen(true)}
                   />
                 )}
+                {view === "business" &&
+                  ("businessBrief" in workspace ? (
+                    <BusinessBriefPage
+                      workspace={workspace}
+                      pending={pending}
+                      editor={businessEditor}
+                      canEdit={localActor !== "auditor"}
+                      canConfirm={
+                        localActor === "admin" || localActor === "sales-owner"
+                      }
+                      onSave={(body) =>
+                        run("正在保存业务约定", () =>
+                          workspaceClient.saveBusinessBrief(body),
+                        )
+                      }
+                      onConfirm={(id, version, metricVersion) =>
+                        run("正在确认指标口径", () =>
+                          workspaceClient.confirmMetric(
+                            id,
+                            workspace.stateVersion,
+                            version,
+                            metricVersion,
+                          ),
+                        )
+                      }
+                    />
+                  ) : (
+                    <Empty
+                      icon={Target}
+                      title="当前服务尚未启用业务约定"
+                      body="请更新并重启本机服务，原有数据与协作功能仍可使用。"
+                    />
+                  ))}
                 {view === "findings" && (
                   <Findings
                     workspace={workspace}
@@ -1124,6 +1179,24 @@ function Overview({
   const complete = workspace.tasks.filter(
     (task) => task.status === "VERIFIED",
   ).length;
+  const priorityFindings = workspace.businessBrief
+    ? Array.from(
+        new Map(
+          workspace.tasks
+            .filter(
+              (item) =>
+                item.inCurrentScope !== false && item.status !== "VERIFIED",
+            )
+            .flatMap((item) => {
+              const found = workspace.findings.find(
+                (value) =>
+                  value.id === (item.currentFindingId ?? item.findingId),
+              );
+              return found ? [[found.id, found] as const] : [];
+            }),
+        ).values(),
+      )
+    : workspace.findings;
   return (
     <>
       <PageTitle
@@ -1157,6 +1230,12 @@ function Overview({
           连接数据
         </button>
       </PageTitle>
+      {"businessBrief" in workspace && (
+        <BusinessContextSummary
+          brief={workspace.businessBrief}
+          onOpen={() => navigate("business")}
+        />
+      )}
       {allDemo && (
         <div className="sd-demo-banner">
           <FlaskConical size={15} />
@@ -1240,17 +1319,25 @@ function Overview({
                   <ArrowUpRight size={14} />
                 </button>
               </div>
-              {workspace.findings.length ? (
+              {priorityFindings.length ? (
                 <FindingRows
-                  findings={workspace.findings.slice(0, 4)}
+                  findings={priorityFindings.slice(0, 4)}
                   workspace={workspace}
                   onSelect={onFinding}
                 />
               ) : (
                 <Empty
                   icon={Fingerprint}
-                  title="当前规则未发现异常"
-                  body="这只覆盖已配置的规则和读取范围，不代表所有业务问题均已排除。"
+                  title={
+                    workspace.businessBrief
+                      ? "本轮暂无可安排的有效发现"
+                      : "当前规则未发现异常"
+                  }
+                  body={
+                    workspace.businessBrief
+                      ? "请结合目标、来源范围与最新盘点理解结果；全部发现和历史任务仍可查看。"
+                      : "这只覆盖已配置的规则和读取范围，不代表所有业务问题均已排除。"
+                  }
                 />
               )}
             </section>
@@ -1956,6 +2043,9 @@ function Team({
         aria-labelledby={`sd-assistant-${selectedRole}`}
       >
         <section className="sd-team-conversation">
+          {assistant?.scopeNotice && (
+            <p className="sd-scope-note">{assistant.scopeNotice}</p>
+          )}
           <div className="sd-section-title">
             <h2>和{ROLE[selectedRole].label}一起看</h2>
             <span className="sd-method-label">
@@ -2151,6 +2241,11 @@ function Team({
                     </small>
                   )}
                   <p>{item.description}</p>
+                  {workspace.businessBrief && item.priorityReason && (
+                    <small className="sd-assignment-owner">
+                      {item.priorityReason}
+                    </small>
+                  )}
                   <span>
                     打开协作记录
                     <ArrowUpRight size={13} />
@@ -2185,9 +2280,11 @@ function Tasks({
   const tasks = workspace.tasks.filter(
     (task) =>
       tab === "all" ||
-      (tab === "finished"
-        ? task.status === "VERIFIED"
-        : task.status !== "VERIFIED"),
+      (tab === "scope"
+        ? task.inCurrentScope !== false
+        : tab === "finished"
+          ? task.status === "VERIFIED"
+          : task.status !== "VERIFIED"),
   );
   return (
     <>
@@ -2209,6 +2306,7 @@ function Tasks({
         <div className="sd-filter-tabs">
           {[
             ["all", "全部任务"],
+            ...(workspace.businessBrief ? [["scope", "本轮范围"]] : []),
             ["active", "进行中"],
             ["finished", "已核验"],
           ].map(([id, label]) => (
@@ -2243,6 +2341,14 @@ function Tasks({
                 <span className="sd-task-main">
                   <strong>{task.title}</strong>
                   <small>{task.description}</small>
+                  {workspace.businessBrief && (
+                    <small>
+                      {task.inCurrentScope === false
+                        ? "保留的历史工作 · "
+                        : "本轮关注 · "}
+                      {task.priorityReason ?? task.scopeReason}
+                    </small>
+                  )}
                 </span>
                 <span className="sd-task-role">
                   {assistant ? ROLE[assistant.role].label : "待分工"}
@@ -2597,6 +2703,25 @@ function TaskDialog({
           <span>更新于 {time(task.updatedAt)}</span>
         </div>
         <p className="sd-task-description">{task.description}</p>
+        {workspace.businessBrief && (
+          <div className="sd-scope-note">
+            <strong>
+              {task.inCurrentScope === false
+                ? "当前未安排，历史仍保留"
+                : "按本轮业务目标安排"}
+            </strong>
+            <p>{task.scopeReason}</p>
+            <p>{task.priorityReason}</p>
+            <small>
+              任务建立于约定{" "}
+              {task.createdUnderBriefVersion == null
+                ? "尚未设置时"
+                : `v${task.createdUnderBriefVersion}`}{" "}
+              · 当前约定 v{workspace.businessBrief.version}
+              。范围变化不是修复证据。
+            </small>
+          </div>
+        )}
         {finding && (
           <div className="sd-task-finding">
             <Fingerprint size={16} />
@@ -2874,6 +2999,11 @@ function Guide({
       icon: Link2,
     },
     {
+      title: "把本轮要做好什么说清楚",
+      body: "在业务约定里说明目标、选择来源范围，并记录共同使用的指标定义。助手据此安排工作；定义确认后仍需另行计算与核对结果。",
+      icon: Target,
+    },
+    {
       title: "打开一项发现，看看依据",
       body: "查看实际观测、检查约定、读取范围和证据指纹。发现是核实线索，不能代替业务判断。",
       icon: Fingerprint,
@@ -2886,7 +3016,7 @@ function Guide({
   ];
   const current = steps[step]!;
   return (
-    <Dialog title="三步，开始协作" onClose={onClose}>
+    <Dialog title="四步，开始协作" onClose={onClose}>
       <div className="sd-guide">
         <div className="sd-guide-steps" aria-label="学习步骤">
           {steps.map((item, i) => (
@@ -2918,13 +3048,13 @@ function Guide({
           </motion.div>
         </AnimatePresence>
         <footer>
-          <span>{step + 1} / 3</span>
+          <span>{step + 1} / {steps.length}</span>
           <button
             className="sd-button sd-primary"
             type="button"
-            onClick={() => (step < 2 ? setStep(step + 1) : onConnect())}
+            onClick={() => (step < steps.length - 1 ? setStep(step + 1) : onConnect())}
           >
-            {step < 2 ? "下一步" : "连接我的数据"}
+            {step < steps.length - 1 ? "下一步" : "连接我的数据"}
             <ArrowRight size={14} />
           </button>
         </footer>

@@ -12,6 +12,9 @@ import io.smartdata.foundation.domain.VerificationPurpose
 interface CaseRepository {
     fun findAll(tenantId: String): List<ExceptionCase>
     fun findById(tenantId: String, id: String): ExceptionCase?
+    /** Durable adapters lock the case row in the active write unit, before action rows.
+     * Never retain the lock across network I/O. The default is for in-memory compatibility. */
+    fun lockById(tenantId: String, id: String): ExceptionCase? = findById(tenantId, id)
     fun save(case: ExceptionCase, expectedStateVersion: Long? = null): ExceptionCase
 }
 

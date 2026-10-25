@@ -100,6 +100,58 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  postgresql-integration:
+    name: PostgreSQL 18 migrations, isolation and recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install checksum-pinned Temurin 25.0.4.1+1
+        uses: ./.github/actions/setup-pinned-java
+      - name: Require a real Docker engine
+        run: docker info
+      - name: Run real PostgreSQL 18 integration tests
+        run: ./gradlew --no-daemon --no-parallel --max-workers=2 --stacktrace :runtime-api:integrationTest --write-locks
+      - name: Reject stale integration dependency locks
+        shell: bash
+        run: |
+          changes="$(git status --porcelain --untracked-files=all -- settings-gradle.lockfile ':(glob)**/gradle.lockfile')"
+          if [[ -n "$changes" ]]; then
+            echo "Integration dependency lock files changed during resolution:" >&2
+            echo "$changes" >&2
+            exit 1
+          fi
+      - name: Require executed integration cases without skips
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          reports = list(Path("runtime-api/build/test-results/integrationTest").glob("TEST-*.xml"))
+          if not reports:
+              raise SystemExit("real PostgreSQL JUnit reports are required")
+          totals = {key: 0 for key in ("tests", "failures", "errors", "skipped")}
+          for path in reports:
+              suite = ElementTree.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(suite.get(key, "0"))
+          output = "\n".join(ElementTree.parse(path).getroot().findtext("system-out", "") for path in reports)
+          if "POSTGRESQL_INTEGRATION_PROVIDER=TESTCONTAINERS_POSTGRES_18_6" not in output or "PROVIDER=PORTABLE" in output:
+              raise SystemExit("CI must prove execution against the real Testcontainers provider")
+          if totals["tests"] == 0 or any(totals[key] for key in ("failures", "errors", "skipped")):
+              raise SystemExit(f"PostgreSQL checks must execute without failures or skips: {totals}")
+          print(f"Real PostgreSQL checks passed: {totals}")
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: ${{ always() }}
+        with:
+          name: smartdata-postgresql18-integration
+          path: |
+            runtime-api/build/reports/tests/integrationTest
+            runtime-api/build/test-results/integrationTest
+          if-no-files-found: error
+          retention-days: 30
+
   contracts:
     name: Public contract validation
     runs-on: ubuntu-24.04

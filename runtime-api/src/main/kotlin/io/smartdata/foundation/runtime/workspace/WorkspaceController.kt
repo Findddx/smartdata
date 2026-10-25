@@ -75,6 +75,21 @@ class WorkspaceController(
     @GetMapping("/report")
     fun report(request: HttpServletRequest) = service.report(actors.resolve(request))
 
+    @GetMapping("/business-brief/history")
+    fun businessBriefHistory(request: HttpServletRequest) = service.businessBriefHistory(actors.resolve(request))
+
+    @PostMapping("/business-brief")
+    fun businessBrief(request: HttpServletRequest,
+        @RequestHeader("Idempotency-Key") @Size(min = 8, max = 128) key: String,
+        @RequestBody body: SaveBusinessBriefCommand) =
+        command(request, key, "business-brief.save", body) { actor -> service.saveBusinessBrief(actor, key, body) }
+
+    @PostMapping("/business-brief/metrics/{metricId}/confirm")
+    fun confirmMetric(request: HttpServletRequest, @PathVariable metricId: String,
+        @RequestHeader("Idempotency-Key") @Size(min = 8, max = 128) key: String,
+        @RequestBody body: ConfirmMetricDefinitionCommand) =
+        command(request, key, "business-brief.metric.confirm:$metricId", body) { actor -> service.confirmMetricDefinition(actor, metricId, key, body) }
+
     @PostMapping("/sources")
     fun source(request: HttpServletRequest, @RequestHeader("Idempotency-Key") @Size(min = 8, max = 128) key: String,
         @RequestBody body: CreateSourceCommand) = command(request, key, "source.create", body) { actor -> service.createSource(actor, key, body) }

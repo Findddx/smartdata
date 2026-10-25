@@ -11,6 +11,9 @@ import io.smartdata.foundation.service.ResourceNotFoundException
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
+import java.util.Currency
+import java.util.Locale
 import java.util.UUID
 
 class WorkspaceService(
@@ -24,6 +27,68 @@ class WorkspaceService(
     private val profiler = DeterministicAssetProfiler(clock)
 
     fun view(actor: Actor): WorkspaceView = toView(store.read(actor.tenantId))
+
+    fun businessBriefHistory(actor: Actor): List<BusinessBrief> {
+        val state = store.read(actor.tenantId)
+        return (state.businessBriefHistory.ifEmpty { listOfNotNull(state.businessBrief) })
+            .map(::safeBriefView)
+    }
+
+    fun saveBusinessBrief(actor: Actor, key: String, body: SaveBusinessBriefCommand): WorkspaceView {
+        requireEditor(actor)
+        val enterprise = businessText(body.enterpriseName, 120, true, "企业名称")
+        val description = businessText(body.businessDescription, 2000, false, "业务简介")
+        require(body.goals.size <= 12 && body.metrics.size <= 40) { "最多登记 12 项业务目标和 40 项指标口径" }
+        validateBusinessIds(body.goals.map { it.id }, "目标")
+        validateBusinessIds(body.metrics.map { it.id }, "指标")
+        val sources = businessSourceIds(body.includedSourceIds)
+        val goals = body.goals.map { goal -> goal.copy(title = businessText(goal.title, 100, true, "目标名称"),
+            expectedOutcome = businessText(goal.expectedOutcome, 1000, true, "期望结果"), sourceIds = businessSourceIds(goal.sourceIds)) }
+        val metrics = body.metrics.map(::normalizeMetric)
+        return mutate(actor, key, body.expectedStateVersion, "business_brief.saved", "business-brief", body) { state ->
+            requireBriefVersion(state, body.expectedBriefVersion)
+            val known = state.sources.map { it.id }.toSet()
+            require(sources.all { it in known }) { "本轮范围只能引用同一工作区已登记的来源" }
+            require((goals.flatMap { it.sourceIds } + metrics.flatMap { it.sourceIds }).all { it in sources }) {
+                "目标和口径只能关联本轮纳入的来源；调整范围时请一并调整关联，原版本仍保留"
+            }
+            val previous = state.businessBrief
+            val savedMetrics = metrics.map { input ->
+                val old = previous?.metrics?.find { it.id == input.id }
+                if (old != null && old.input() == input) old.copy(calculationStatus = "NOT_COMPUTED")
+                else MetricDefinition(input.id, input.name, input.businessDefinition, input.owner, input.timeZone, input.currency,
+                    input.formulaDescription, input.sourceIds, stateVersion = (old?.stateVersion ?: 0) + 1)
+            }
+            retainBusinessBrief(state, BusinessBrief((previous?.version ?: 0) + 1, enterprise, description, goals, sources,
+                savedMetrics, now(), actor.id))
+            if (state.assistants.isNotEmpty()) synchronizeTasks(state)
+        }
+    }
+
+    fun confirmMetricDefinition(actor: Actor, metricId: String, key: String, body: ConfirmMetricDefinitionCommand): WorkspaceView {
+        requireReviewer(actor)
+        require(body.expectedMetricVersion >= 1) { "口径版本必须为正数，请刷新后重试" }
+        return mutate(actor, key, body.expectedStateVersion, "metric_definition.confirmed", metricId, body) { state ->
+            requireBriefVersion(state, body.expectedBriefVersion)
+            val brief = state.businessBrief ?: throw BusinessValidationException("请先登记业务背景与指标草稿")
+            val metric = brief.metrics.find { it.id == metricId } ?: throw ResourceNotFoundException("metric definition", metricId)
+            if (metric.stateVersion != body.expectedMetricVersion)
+                throw OptimisticStateException("metric-definition", metricId, body.expectedMetricVersion, metric.stateVersion)
+            require(metric.status == MetricDefinitionStatus.DRAFT) { "该口径已确认；内容变更后需重新确认" }
+            require(metric.businessDefinition.isNotBlank() && metric.owner.isNotBlank() && metric.timeZone.isNotBlank() && metric.formulaDescription.isNotBlank()) {
+                "确认前必须明确业务定义、责任人、时区和公式说明；文字说明不会执行或计算指标"
+            }
+            require(metric.sourceIds.isNotEmpty() && metric.sourceIds.all { sourceId ->
+                sourceId in brief.includedSourceIds && state.sources.any { it.id == sourceId && it.status != SourceStatus.DISCONNECTED }
+            }) { "确认前须关联至少一个本轮纳入且未断开的来源" }
+            val confirmed = metric.copy(status = MetricDefinitionStatus.CONFIRMED, stateVersion = metric.stateVersion + 1,
+                confirmedBy = actor.id, confirmedAt = now(), calculationStatus = "NOT_COMPUTED")
+            retainBusinessBrief(state, brief.copy(version = brief.version + 1,
+                metrics = brief.metrics.map { if (it.id == metricId) confirmed else it }, updatedAt = now(), updatedBy = actor.id,
+                modelContextExportEnabled = false))
+            if (state.assistants.isNotEmpty()) synchronizeTasks(state)
+        }
+    }
 
     fun createSource(actor: Actor, key: String, body: CreateSourceCommand): WorkspaceView {
         requireAdministrator(actor)
@@ -149,6 +214,21 @@ class WorkspaceService(
         requireEditor(actor)
         return mutate(actor, key, body.expectedStateVersion, "demo.cleared", "demo", body) { state ->
             require(state.sources.isNotEmpty() && state.sources.all { it.provenance == Provenance.DEMO }) { "仅可清空纯演示工作区" }
+            val demoIds = state.sources.map { it.id }.toSet()
+            state.businessBrief?.let { brief ->
+                require(brief.goals.none { goal -> goal.sourceIds.any { it in demoIds } }) {
+                    "仍有目标只关注演示来源；请先明确改为本轮全部范围、重选来源或移除该目标，再退出演示，避免目标悄悄扩大到未来来源"
+                }
+                if ((brief.includedSourceIds + brief.goals.flatMap { it.sourceIds } + brief.metrics.flatMap { it.sourceIds }).any { it in demoIds }) {
+                    retainBusinessBrief(state, brief.copy(version = brief.version + 1,
+                        includedSourceIds = brief.includedSourceIds.filterNot { it in demoIds },
+                        goals = brief.goals,
+                        metrics = brief.metrics.map { metric -> if (metric.sourceIds.none { it in demoIds }) metric else metric.copy(
+                            sourceIds = metric.sourceIds.filterNot { it in demoIds }, status = MetricDefinitionStatus.DRAFT,
+                            stateVersion = metric.stateVersion + 1, confirmedBy = null, confirmedAt = null, calculationStatus = "NOT_COMPUTED") },
+                        updatedAt = now(), updatedBy = actor.id, modelContextExportEnabled = false))
+                }
+            }
             state.sources.clear(); state.assets.clear(); state.scans.clear(); state.findings.clear()
             state.assistants.clear(); state.tasks.clear(); state.comments.clear(); state.messages.clear()
         }
@@ -212,15 +292,12 @@ class WorkspaceService(
             return toView(before)
         }
         if (before.stateVersion != body.expectedStateVersion) throw OptimisticStateException("workspace", actor.tenantId, body.expectedStateVersion, before.stateVersion)
-        val assistant = before.assistants.find { it.id == assistantId } ?: throw ResourceNotFoundException("assistant", assistantId)
-        val task = body.taskId?.let { taskId -> before.tasks.find { it.id == taskId && it.assistantId == assistantId }
+        val planner = BusinessBriefPlanner(before)
+        val assistant = planner.assistant(before.assistants.find { it.id == assistantId } ?: throw ResourceNotFoundException("assistant", assistantId))
+        val task = body.taskId?.let { taskId -> before.tasks.find { it.id == taskId && it.id in assistant.taskIds }
             ?: throw ResourceNotFoundException("assistant task", taskId) }
-        val eligibleScans = before.sources.filter { it.status == SourceStatus.SCANNED }.associate { source ->
-            source.id to before.scans.lastOrNull { it.sourceId == source.id && it.status == "SUCCEEDED" }?.id
-        }
-        val selected = before.findings.filter { it.active && eligibleScans[it.sourceId] == it.scanId &&
-            it.id in assistant.findingIds && (task == null || it.id == task.findingId) }
-            .sortedWith(compareBy<FindingView> { it.severity.ordinal }.thenBy { it.id }).take(5)
+        val selected = planner.forRole(assistant.role).map { it.finding }
+            .filter { task == null || BusinessBriefPlanner.taskId(it) == task.id }.take(5)
         // A future network/model call runs outside the store lock. Commit CAS
         // rejects the result if the workspace evidence changed meanwhile.
         val result = try {
@@ -252,7 +329,22 @@ class WorkspaceService(
         val state = store.read(actor.tenantId)
         val findings = state.findings.filter { it.active }
         val failures = state.sources.count { it.status == SourceStatus.FAILED }
-        return WorkspaceReport(now(), state.stateVersion, "DETERMINISTIC_EVIDENCE_REPORT_V1", "智能数据基座 · 可核对的工作区报告", listOf(
+        val brief = state.businessBrief
+        val businessSections = if (brief == null) listOf(ReportSection("业务约定", "尚未登记企业目标与指标口径，当前工作仍按通用检查规则安排。"))
+            else listOf(
+                ReportSection("本轮业务目标", "${brief.enterpriseName}，业务约定版本 ${brief.version}。" + if (brief.goals.isEmpty()) "尚未登记业务目标，不推断企业目标。"
+                    else brief.goals.joinToString("\n", prefix = "\n") {
+                        val priority = when (it.priority) { BusinessGoalPriority.HIGH -> "高"; BusinessGoalPriority.MEDIUM -> "中"; BusinessGoalPriority.LOW -> "低" }
+                        "${it.title}（${priority}优先级）：${it.expectedOutcome}。这是期望结果，尚未测量是否达成。"
+                    }),
+                ReportSection("本轮纳入范围", if (brief.includedSourceIds.isEmpty()) "本轮未纳入任何来源；历史任务和证据仍保留，移出范围不等于修复。"
+                    else brief.includedSourceIds.joinToString("、") { sourceId -> state.sources.find { it.id == sourceId }?.name ?: sourceId }),
+                ReportSection("指标口径登记", if (brief.metrics.isEmpty()) "尚未登记指标口径；没有计算业务指标。" else brief.metrics.joinToString("\n") {
+                    "${it.name}：${if (it.status == MetricDefinitionStatus.CONFIRMED) "口径已确认" else "草稿待确认"}；负责人${it.owner.ifBlank { "未填" }}；时区${it.timeZone.ifBlank { "未填" }}；币种${it.currency ?: "未登记或不适用"}；关联${it.sourceIds.size}个来源。定义：${it.businessDefinition.ifBlank { "未填" }}。公式说明（未执行）：${it.formulaDescription.ifBlank { "未填" }}。" +
+                        (it.confirmedBy?.let { reviewer -> "确认身份$reviewer，时间${it.confirmedAt}。" } ?: "") + "此处仅登记口径，尚未计算或验证指标。"
+                }),
+            )
+        return WorkspaceReport(now(), state.stateVersion, "DETERMINISTIC_EVIDENCE_REPORT_V1", "智能数据基座 · 可核对的工作区报告", businessSections + listOf(
             ReportSection("观察范围", "已登记 ${state.sources.size} 个来源，观察 ${state.assets.size} 个资产、${state.assets.sumOf { it.rowCount }} 行。${state.sources.count { it.provenance == Provenance.DEMO }} 个为演示来源；$failures 个来源最近扫描失败。所有判断只覆盖采样范围。"),
             ReportSection("发现的问题", if (findings.isEmpty()) "没有有效问题记录不等于系统健康；需结合接入覆盖面和样本边界判断。" else findings.joinToString("\n") { "${it.title}：${it.observed}。依据 ${it.ruleId}，证据 ${it.evidence.sha256.take(16)}。" }),
             ReportSection("协作进度", "已建立 ${state.assistants.size} 位职责助手，${state.tasks.size} 项任务，其中 ${state.tasks.count { it.status == TaskStatus.VERIFIED }} 项经不同本地演示身份结合新扫描证据复核。演示身份可由同一操作者切换，不构成真实双人审批证明。"),
@@ -297,28 +389,70 @@ class WorkspaceService(
     }
 
     private fun synchronizeTasks(state: PersistedWorkspace) {
-        val active = state.findings.filter { it.active }
-        active.forEach { finding ->
-            val role = if (finding.ruleId.contains("STALE") || finding.ruleId.contains("TIMESTAMP") || finding.ruleId.contains("OBSERVATION") || finding.ruleId.contains("EMPTY_ASSET")) AssistantRole.OPERATIONS else AssistantRole.ANALYSIS
+        val planner = BusinessBriefPlanner(state)
+        planner.findings.forEach { planned ->
+            val finding = planned.finding
+            val role = if (BusinessBriefPlanner.operationsRule(finding)) AssistantRole.OPERATIONS else AssistantRole.ANALYSIS
             val assistant = state.assistants.find { it.role == role } ?: return@forEach
-            val taskId = "task-${digest("${finding.sourceId}:${finding.assetId}:${finding.ruleId}:${finding.column}").take(24)}"
+            val taskId = BusinessBriefPlanner.taskId(finding)
             val previous = state.tasks.find { it.id == taskId }
             if (previous == null) state.tasks += TaskView(taskId, assistant.id, finding.id, finding.title, finding.suggestion,
-                createdAt = now(), updatedAt = now(), evidenceRefs = listOf(finding.id))
-            // Keep the original problem bound through completion/verification. A new failing scan is not proof of repair.
-            else if (previous.status == TaskStatus.VERIFIED && previous.findingId != finding.id) {
+                createdAt = now(), updatedAt = now(), evidenceRefs = listOf(finding.id), createdUnderBriefVersion = state.businessBrief?.version)
+        }
+        // A new independent failing observation can reopen a previous result, even outside current business scope.
+        state.findings.filter { it.active && state.sources.any { source -> source.id == it.sourceId && source.status == SourceStatus.SCANNED } }.forEach { finding ->
+            val previous = state.tasks.find { it.id == BusinessBriefPlanner.taskId(finding) }
+            if (previous != null && previous.status == TaskStatus.VERIFIED && previous.findingId != finding.id) {
                 state.tasks.replace(previous) { it.copy(status = TaskStatus.REOPENED, findingId = finding.id, ownerId = null, verifiedBy = null,
-                    updatedAt = now(), stateVersion = it.stateVersion + 1, evidenceRefs = listOf(finding.id)) }
+                    updatedAt = now(), stateVersion = it.stateVersion + 1, evidenceRefs = (it.evidenceRefs + finding.id).distinct()) }
             }
         }
-        val revised = state.assistants.map { assistant ->
-            val assigned = if (assistant.role == AssistantRole.DECISION) active.filter { it.severity == FindingSeverity.HIGH }.map { it.id }
-                else active.filter { finding -> state.tasks.any { it.assistantId == assistant.id && (it.findingId == finding.id || it.id == "task-${digest("${finding.sourceId}:${finding.assetId}:${finding.ruleId}:${finding.column}").take(24)}") } }.map { it.id }
-            assistant.copy(findingIds = assigned, taskIds = if (assistant.role == AssistantRole.DECISION) state.tasks.filter { task -> active.any { it.severity == FindingSeverity.HIGH && it.id == task.findingId } }.map { it.id }
-                else state.tasks.filter { it.assistantId == assistant.id }.map { it.id })
-        }
+        val revisedTasks = state.tasks.map(planner::task)
+        state.tasks.clear(); state.tasks.addAll(revisedTasks)
+        val revised = state.assistants.map(planner::assistant)
         state.assistants.clear(); state.assistants.addAll(revised)
     }
+
+    private fun businessText(value: String, maximum: Int, required: Boolean, label: String): String = value.trim().also {
+        require(it.length <= maximum && (!required || it.isNotBlank()) && it.none { char -> char == '\u0000' }) {
+            if (required) "${label}需填写1–${maximum}个字符，不能包含空字符" else "${label}不能超过${maximum}个字符或包含空字符"
+        }
+    }
+
+    private fun validateBusinessIds(ids: List<String>, label: String) {
+        require(ids.distinct().size == ids.size && ids.all { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")) }) { "${label}ID必须唯一，使用1–64个字母数字或._-，首字符须为字母数字" }
+    }
+
+    private fun businessSourceIds(ids: List<String>): List<String> {
+        require(ids.size <= 50 && ids.distinct().size == ids.size && ids.all { it.isNotBlank() && it.length <= 128 }) { "最多关联50个唯一来源ID" }
+        return ids.sorted()
+    }
+
+    private fun normalizeMetric(input: MetricDefinitionInput): MetricDefinitionInput {
+        val timeZone = businessText(input.timeZone, 80, false, "时区")
+        if (timeZone.isNotBlank()) require(runCatching { ZoneId.of(timeZone) }.isSuccess) { "时区须为明确有效的时区，例如Asia/Shanghai或UTC" }
+        val currency = input.currency?.trim()?.takeIf { it.isNotEmpty() }?.uppercase(Locale.ROOT)
+        require(currency == null || currency.matches(Regex("[A-Z]{3}")) && runCatching { Currency.getInstance(currency) }.isSuccess) { "币种请使用有效三字母代码，例如CNY（人民币）；不涉及币种时可留空" }
+        return input.copy(name = businessText(input.name, 100, true, "指标名称"), businessDefinition = businessText(input.businessDefinition, 2000, false, "业务定义"),
+            owner = businessText(input.owner, 120, false, "责任人"), timeZone = timeZone, currency = currency,
+            formulaDescription = businessText(input.formulaDescription, 2000, false, "公式说明"), sourceIds = businessSourceIds(input.sourceIds))
+    }
+
+    private fun requireBriefVersion(state: PersistedWorkspace, expected: Long) {
+        require(expected >= 0) { "expectedBriefVersion不能为负数" }
+        val actual = state.businessBrief?.version ?: 0
+        if (actual != expected) throw OptimisticStateException("business-brief", state.tenantId, expected, actual)
+    }
+
+    private fun retainBusinessBrief(state: PersistedWorkspace, brief: BusinessBrief) {
+        require(state.businessBriefHistory.size < 100) { "业务约定已达100个历史版本，请先迁移可归档存储；不会覆盖旧版本" }
+        if (state.businessBriefHistory.isEmpty()) state.businessBrief?.let { state.businessBriefHistory += it }
+        state.businessBrief = brief
+        state.businessBriefHistory += brief
+    }
+
+    private fun safeBriefView(brief: BusinessBrief) = brief.copy(modelContextExportEnabled = false,
+        metrics = brief.metrics.map { it.copy(calculationStatus = "NOT_COMPUTED") })
 
     private fun validateRefs(state: PersistedWorkspace, references: List<String>) {
         require(references.size <= 20) { "最多引用 20 条证据" }
@@ -337,12 +471,16 @@ class WorkspaceService(
         actor.id, actor.roles.map { it.name }.sorted(), event, if (event == "source.created") "new-source" else resourceId, body,
     )
 
-    private fun toView(state: PersistedWorkspace) = WorkspaceView(state.stateVersion, sources = state.sources.map { source ->
+    private fun toView(state: PersistedWorkspace): WorkspaceView {
+        val planner = BusinessBriefPlanner(state)
+        return WorkspaceView(state.stateVersion, sources = state.sources.map { source ->
         SourceView(source.id, source.name, source.kind, source.provenance, source.status,
             source.endpoint?.let { endpoint -> try { val uri = URI.create(endpoint.removePrefix("jdbc:")); "${uri.host}${if (uri.port >= 0) ":${uri.port}" else ""}${uri.path}" } catch (_: Exception) { "已配置端点" } },
             source.lastScannedAt, state.assets.count { it.sourceId == source.id }, source.credentialEnvRef != null, source.stateVersion, source.lastError)
-    }, assets = state.assets.toList(), scans = state.scans.toList(), findings = state.findings.toList(), assistants = state.assistants.map { it.copy(method = reasoning.method) },
-        tasks = state.tasks.toList(), comments = state.comments.toList(), messages = state.messages.toList(), audit = state.audit.toList(), capabilities = capabilities.copy(assistantMethod = reasoning.method))
+    }, assets = state.assets.toList(), scans = state.scans.toList(), findings = state.findings.toList(), assistants = state.assistants.map { planner.assistant(it).copy(method = reasoning.method) },
+        tasks = planner.tasks(), comments = state.comments.toList(), messages = state.messages.toList(), audit = state.audit.toList(), capabilities = capabilities.copy(assistantMethod = reasoning.method),
+        businessBrief = state.businessBrief?.let(::safeBriefView))
+    }
 
     private fun connector(source: SourceRecord) = connectors[source.kind] ?: throw BusinessValidationException("此部署未启用该只读连接器")
     private fun findSource(state: PersistedWorkspace, sourceId: String) = state.sources.find { it.id == sourceId } ?: throw ResourceNotFoundException("workspace source", sourceId)

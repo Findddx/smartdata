@@ -28,16 +28,17 @@ export function DataFlow({
       label: "理解问题",
       caption: "检查 · 核实",
       value: workspace.findings.filter((finding) => finding.active).length,
-      unit: "项待核实发现",
+      unit: workspace.businessBrief ? "项工作区发现" : "项待核实发现",
       action: onFindings,
     },
     {
       icon: UsersRound,
       label: "一起解决",
       caption: "分工 · 协作",
-      value: workspace.tasks.filter((task) => task.status !== "VERIFIED")
-        .length,
-      unit: "项协作任务",
+      value: workspace.tasks.filter(
+        (task) => task.status !== "VERIFIED" && task.inCurrentScope !== false,
+      ).length,
+      unit: workspace.businessBrief ? "项本轮任务" : "项协作任务",
       action: onTeam,
     },
   ];

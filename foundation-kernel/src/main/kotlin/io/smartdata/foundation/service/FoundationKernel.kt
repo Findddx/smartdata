@@ -34,7 +34,10 @@ import io.smartdata.foundation.repository.CaseRepository
 import io.smartdata.foundation.repository.MemoryRepository
 import io.smartdata.foundation.repository.RecommendationRepository
 import io.smartdata.foundation.repository.VerificationRepository
+import io.smartdata.foundation.repository.RepositoryUnitOfWork
+import io.smartdata.foundation.repository.DirectRepositoryUnitOfWork
 import java.security.MessageDigest
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -76,10 +79,12 @@ class FoundationKernel(
     private val dataAccess: DataAccessDecisionPort,
     private val clock: Clock,
     private val definitions: Map<String, ActionDefinition> = FulfillmentActions.definitions,
+    private val unitOfWork: RepositoryUnitOfWork = DirectRepositoryUnitOfWork,
 ) {
     fun listCases(actor: Actor): List<ExceptionCase> {
         requireAnyRole(actor, caseReaderRoles)
-        return cases.findAll(actor.tenantId).map { visibleCase(actor, it) }
+        val snapshot = read(actor) { cases.findAll(actor.tenantId) }
+        return snapshot.map { visibleCase(actor, it) }
     }
 
     fun getCase(actor: Actor, caseId: String): ExceptionCase =
@@ -89,21 +94,21 @@ class FoundationKernel(
         .claims.flatMap { it.evidenceRefs }.distinctBy { it.id }.sortedByDescending { it.observedAt }
 
     fun getRecommendation(actor: Actor, id: String): Recommendation {
-        val recommendation = recommendations.findById(actor.tenantId, id)
+        val recommendation = read(actor) { recommendations.findById(actor.tenantId, id) }
             ?: throw ResourceNotFoundException("recommendation", id)
         requireCaseEvidenceAccess(actor, recommendation.caseId, recommendation.evidenceIds, "recommendation", id)
         return recommendation
     }
 
     fun getAction(actor: Actor, id: String): ActionRequest {
-        val action = actions.findById(actor.tenantId, id) ?: throw ResourceNotFoundException("actionRequest", id)
+        val action = read(actor) { actions.findById(actor.tenantId, id) } ?: throw ResourceNotFoundException("actionRequest", id)
         requireCaseEvidenceAccess(actor, action.caseId, action.evidenceIds, "actionRequest", id)
         return action
     }
 
     fun getReceipt(actor: Actor, actionRequestId: String): ActionReceipt? {
         getAction(actor, actionRequestId)
-        return receipts.findByActionRequestId(actor.tenantId, actionRequestId)
+        return read(actor) { receipts.findByActionRequestId(actor.tenantId, actionRequestId) }
     }
 
     fun getVerification(
@@ -112,7 +117,7 @@ class FoundationKernel(
         purpose: VerificationPurpose = VerificationPurpose.ACTION,
     ): VerificationResult? {
         getAction(actor, actionRequestId)
-        return verifications.findByActionRequestId(actor.tenantId, actionRequestId, purpose)?.also { verification ->
+        return read(actor) { verifications.findByActionRequestId(actor.tenantId, actionRequestId, purpose) }?.also { verification ->
             if (verification.evidenceRefs.any {
                     !dataAccess.canRead(actor, it.tenantId, it.aclRef, it.classification)
                 }
@@ -120,13 +125,13 @@ class FoundationKernel(
         }
     }
 
-    fun listMemoryCandidates(actor: Actor): List<MemoryAsset> = memories.findAll(actor.tenantId)
+    fun listMemoryCandidates(actor: Actor): List<MemoryAsset> = read(actor) { memories.findAll(actor.tenantId) }
         .filter { it.status == MemoryStatus.PROPOSED && canRead(actor, it.tenantId, it.aclRef) }
 
-    fun listApprovedMemories(actor: Actor): List<MemoryAsset> = memories.findAll(actor.tenantId)
+    fun listApprovedMemories(actor: Actor): List<MemoryAsset> = read(actor) { memories.findAll(actor.tenantId) }
         .filter { it.status == MemoryStatus.APPROVED && canRead(actor, it.tenantId, it.aclRef) }
 
-    fun getMemory(actor: Actor, memoryId: String): MemoryAsset = memories.findById(actor.tenantId, memoryId)
+    fun getMemory(actor: Actor, memoryId: String): MemoryAsset = read(actor) { memories.findById(actor.tenantId, memoryId) }
         ?.takeIf { canRead(actor, it.tenantId, it.aclRef) }
         ?: throw ResourceNotFoundException("memoryAsset", memoryId)
 
@@ -168,10 +173,13 @@ class FoundationKernel(
             modelVersion = model.modelVersion,
             evidenceIds = proposed.evidenceIds,
         )
-        recommendations.save(recommendation)
-        audit(actor, "recommendation", recommendation.id, "recommendation.created",
-            mapOf("caseId" to case.id, "actionDefinitionId" to recommendation.actionDefinitionId))
-        return recommendation
+        return unitOfWork.write(actor.tenantId) {
+            requireCaseSnapshot(case, lockCase(actor, case.id))
+            recommendations.save(recommendation)
+            audit(actor, "recommendation", recommendation.id, "recommendation.created",
+                mapOf("caseId" to case.id, "actionDefinitionId" to recommendation.actionDefinitionId))
+            recommendation
+        }
     }
 
     fun createAction(actor: Actor, command: CreateActionCommand): ActionRequest {
@@ -183,8 +191,8 @@ class FoundationKernel(
         requireAnyRole(actor, definition.requestRoles)
         val fingerprint = fingerprint(recommendation, command.expectedCaseStateVersion)
 
-        actions.findByIdempotencyKey(actor.tenantId, command.idempotencyKey)?.let { existing ->
-            if (existing.requestFingerprint != fingerprint) throw IdempotencyConflictException()
+        read(actor) { actions.findByIdempotencyKey(actor.tenantId, command.idempotencyKey) }?.let { existing ->
+            if (!sameActionSemantics(actor, existing, recommendation, command.expectedCaseStateVersion)) throw IdempotencyConflictException()
             return existing
         }
         if (case.stateVersion != command.expectedCaseStateVersion ||
@@ -197,78 +205,90 @@ class FoundationKernel(
         if (!policyDecision.allowed || policyDecision.policyVersion != case.policyVersion) {
             throw AuthorizationDeniedException("策略拒绝动作：${policyDecision.reasonZh}")
         }
-        val now = clock.instant()
-        val updatedCase = cases.save(
-            case.copy(
-                status = CaseStatus.AWAITING_APPROVAL,
-                stateVersion = case.stateVersion + 1,
+        return unitOfWork.write(actor.tenantId) {
+            val lockedCase = lockCase(actor, case.id)
+            actions.findByIdempotencyKey(actor.tenantId, command.idempotencyKey)?.let { existing ->
+                if (!sameActionSemantics(actor, existing, recommendation, command.expectedCaseStateVersion)) throw IdempotencyConflictException()
+                return@write existing
+            }
+            requireCaseSnapshot(case, lockedCase)
+            val now = clock.instant()
+            val updatedCase = cases.save(
+                case.copy(
+                    status = CaseStatus.AWAITING_APPROVAL,
+                    stateVersion = case.stateVersion + 1,
+                    updatedAt = now,
+                ),
+                case.stateVersion,
+            )
+            var request = ActionRequest(
+                id = StableIds.from("action", actor.tenantId, command.idempotencyKey),
+                tenantId = actor.tenantId,
+                caseId = case.id,
+                recommendationId = recommendation.id,
+                definitionId = definition.id,
+                definitionVersion = definition.version,
+                input = recommendation.actionInput,
+                evidenceIds = recommendation.evidenceIds,
+                requestedBy = actor.id,
+                idempotencyKey = command.idempotencyKey,
+                requestFingerprint = fingerprint,
+                expectedCaseStateVersion = command.expectedCaseStateVersion,
+                boundCaseStateVersion = updatedCase.stateVersion,
+                domainVersion = recommendation.domainVersion,
+                policyVersion = recommendation.policyVersion,
+                state = ActionState.PROPOSED,
+                stateVersion = 0,
+                createdAt = now,
+                approvalExpiresAt = now.plus(definition.approvalTtl),
                 updatedAt = now,
-            ),
-            case.stateVersion,
-        )
-        var request = ActionRequest(
-            id = StableIds.from("action", actor.tenantId, command.idempotencyKey),
-            tenantId = actor.tenantId,
-            caseId = case.id,
-            recommendationId = recommendation.id,
-            definitionId = definition.id,
-            definitionVersion = definition.version,
-            input = recommendation.actionInput,
-            evidenceIds = recommendation.evidenceIds,
-            requestedBy = actor.id,
-            idempotencyKey = command.idempotencyKey,
-            requestFingerprint = fingerprint,
-            expectedCaseStateVersion = command.expectedCaseStateVersion,
-            boundCaseStateVersion = updatedCase.stateVersion,
-            domainVersion = recommendation.domainVersion,
-            policyVersion = recommendation.policyVersion,
-            state = ActionState.PROPOSED,
-            stateVersion = 0,
-            createdAt = now,
-            approvalExpiresAt = now.plus(definition.approvalTtl),
-            updatedAt = now,
-        )
-        request = ActionStateMachine.transition(request, ActionState.POLICY_PASSED, now)
-        request = ActionStateMachine.transition(request, ActionState.AWAITING_APPROVAL, now)
-        actions.save(request)
-        audit(actor, "actionRequest", request.id, "action.awaiting_approval",
-            mapOf("caseId" to case.id, "definitionId" to definition.id))
-        return request
+            )
+            request = ActionStateMachine.transition(request, ActionState.POLICY_PASSED, now)
+            request = ActionStateMachine.transition(request, ActionState.AWAITING_APPROVAL, now)
+            actions.save(request)
+            audit(actor, "actionRequest", request.id, "action.awaiting_approval",
+                mapOf("caseId" to case.id, "definitionId" to definition.id))
+            request
+        }
     }
 
     fun approve(actor: Actor, actionRequestId: String, expectedStateVersion: Long): ActionRequest {
-        val request = getAction(actor, actionRequestId)
-        val definition = definitionFor(request)
+        val snapshot = getAction(actor, actionRequestId)
+        val definition = definitionFor(snapshot)
         requireAnyRole(actor, definition.approvalRoles)
-        if (actor.id == request.requestedBy) {
+        if (actor.id == snapshot.requestedBy) {
             throw AuthorizationDeniedException("申请人与审批人必须为不同人员")
         }
-        requireVersion(request, expectedStateVersion)
-        val case = loadCase(actor, request.caseId)
-        expireWhenApprovalIsStale(request, definition, case, actor)
-        if (case.stateVersion != request.boundCaseStateVersion ||
-            case.domainVersion != request.domainVersion || case.policyVersion != request.policyVersion
-        ) {
-            val expired = ActionStateMachine.transition(request, ActionState.EXPIRED, clock.instant())
-            actions.save(expired, request.stateVersion)
-            throw OptimisticStateException("case", case.id, request.boundCaseStateVersion, case.stateVersion)
+        requireVersion(snapshot, expectedStateVersion)
+        if (snapshot.state != ActionState.AWAITING_APPROVAL) throw BusinessValidationException("只有等待审批的动作可以批准")
+        return committed(actor) {
+            val case = lockCase(actor, snapshot.caseId)
+            val request = currentAction(actor, snapshot)
+            approvalFailure(actor, request, definition, case)?.let { return@committed Result.failure(it) }
+            val approved = ActionStateMachine.transition(request, ActionState.APPROVED, clock.instant()).copy(approvedBy = actor.id)
+            actions.save(approved, request.stateVersion)
+            audit(actor, "actionRequest", approved.id, "action.approved", mapOf("caseId" to approved.caseId))
+            Result.success(approved)
         }
-        val approved = ActionStateMachine.transition(request, ActionState.APPROVED, clock.instant())
-            .copy(approvedBy = actor.id)
-        actions.save(approved, request.stateVersion)
-        audit(actor, "actionRequest", approved.id, "action.approved", mapOf("caseId" to approved.caseId))
-        return approved
     }
 
     fun reject(actor: Actor, actionRequestId: String, expectedStateVersion: Long): ActionRequest {
-        val request = getAction(actor, actionRequestId)
-        requireAnyRole(actor, definitionFor(request).approvalRoles)
-        requireVersion(request, expectedStateVersion)
-        val rejected = ActionStateMachine.transition(request, ActionState.REJECTED, clock.instant())
-        actions.save(rejected, request.stateVersion)
-        reopenCaseIfUnchanged(request, actor)
-        audit(actor, "actionRequest", rejected.id, "action.rejected", mapOf("caseId" to rejected.caseId))
-        return rejected
+        val snapshot = getAction(actor, actionRequestId)
+        requireAnyRole(actor, definitionFor(snapshot).approvalRoles)
+        requireVersion(snapshot, expectedStateVersion)
+        if (snapshot.state !in setOf(ActionState.PROPOSED, ActionState.POLICY_PASSED, ActionState.AWAITING_APPROVAL)) {
+            throw BusinessValidationException("当前动作不允许拒绝审批")
+        }
+        val caseSnapshot = loadCase(actor, snapshot.caseId)
+        return unitOfWork.write(actor.tenantId) {
+            requireCaseSnapshot(caseSnapshot, lockCase(actor, snapshot.caseId))
+            val request = currentAction(actor, snapshot)
+            val rejected = ActionStateMachine.transition(request, ActionState.REJECTED, clock.instant())
+            actions.save(rejected, request.stateVersion)
+            reopenCaseIfUnchanged(request, actor)
+            audit(actor, "actionRequest", rejected.id, "action.rejected", mapOf("caseId" to rejected.caseId))
+            rejected
+        }
     }
 
     fun execute(actor: Actor, actionRequestId: String, expectedStateVersion: Long): ExecutionView {
@@ -279,7 +299,7 @@ class FoundationKernel(
             throw AuthorizationDeniedException("只有原审批人或管理员可以触发已审批动作")
         }
 
-        val executionKey = "${actor.tenantId}::$actionRequestId"
+        val executionKey = ExecutionKey(actor.tenantId, actionRequestId)
         val candidate = InFlightExecution(expectedStateVersion, CompletableFuture())
         val running = inFlightExecutions.putIfAbsent(executionKey, candidate)
         if (running != null) {
@@ -311,70 +331,59 @@ class FoundationKernel(
     }
 
     private fun executeOnce(actor: Actor, actionRequestId: String, expectedStateVersion: Long): ExecutionView {
-        var request = getAction(actor, actionRequestId)
-        val definition = definitionFor(request)
+        val (snapshot, existingReceipt) = read(actor) {
+            rawAction(actor, actionRequestId) to receipts.findByActionRequestId(actor.tenantId, actionRequestId)
+        }
+        requireCaseEvidenceAccess(actor, snapshot.caseId, snapshot.evidenceIds, "actionRequest", snapshot.id)
+        val definition = definitionFor(snapshot)
         requireAnyRole(actor, definition.approvalRoles)
-        if (actor.id != request.approvedBy && BusinessRole.ADMIN !in actor.roles) {
+        if (actor.id != snapshot.approvedBy && BusinessRole.ADMIN !in actor.roles) {
             throw AuthorizationDeniedException("只有原审批人或管理员可以触发已审批动作")
         }
-        val existingReceipt = receipts.findByActionRequestId(actor.tenantId, request.id)
-        if (request.state == ActionState.EXECUTING) {
-            val receipt = existingReceipt ?: run {
-                val reconciliationNotBefore = request.updatedAt
-                    .plus(definition.timeout)
-                    .plus(EXECUTION_RECONCILIATION_GRACE)
-                if (clock.instant().isBefore(reconciliationNotBefore)) {
-                    throw BusinessValidationException(
-                        "动作仍处于执行租约窗口；禁止并发重放，请等待原执行完成或租约到期后对账",
+        if (snapshot.state == ActionState.EXECUTING) {
+            return committed(actor) {
+                val case = lockCase(actor, snapshot.caseId)
+                val request = currentAction(actor, snapshot)
+                val receipt = receipts.findByActionRequestId(actor.tenantId, request.id) ?: run {
+                    val reconciliationNotBefore = request.updatedAt
+                        .plus(definition.timeout)
+                        .plus(EXECUTION_RECONCILIATION_GRACE)
+                    if (clock.instant().isBefore(reconciliationNotBefore)) {
+                        throw BusinessValidationException(
+                            "动作仍处于执行租约窗口；禁止并发重放，请等待原执行完成或租约到期后对账",
+                        )
+                    }
+                    unknownReceipt(
+                        request,
+                        "执行租约已过期且没有外部回执；禁止重放写操作，必须先独立对账",
                     )
                 }
-                unknownReceipt(
-                    request,
-                    "执行租约已过期且没有外部回执；禁止重放写操作，必须先独立对账",
-                ).also(receipts::save)
+                Result.success(commitExecutionOutcome(actor, request, case, receipt, receipt.outcome == ReceiptOutcome.UNKNOWN,
+                    "action.execution_reconciled_after_interruption"))
             }
-            val target = if (receipt.outcome == ReceiptOutcome.UNKNOWN) {
-                ActionState.UNKNOWN_REQUIRES_RECONCILIATION
-            } else {
-                ActionState.EXECUTED_UNVERIFIED
-            }
-            request = ActionStateMachine.transition(request, target, clock.instant())
-            actions.save(request, request.stateVersion - 1)
-            val verificationCase = markCaseInProgress(actor, request.caseId)
-            val beforeBinding = request.stateVersion
-            request = request.copy(
-                verificationBoundCaseStateVersion = verificationCase.stateVersion,
-                stateVersion = request.stateVersion + 1,
-                updatedAt = clock.instant(),
-            )
-            actions.save(request, beforeBinding)
-            audit(actor, "actionRequest", request.id, "action.execution_reconciled_after_interruption",
-                mapOf("caseId" to request.caseId, "receiptId" to receipt.id, "state" to target.name))
-            return ExecutionView(request, receipt)
         }
         existingReceipt?.let { existing ->
-            if (request.state in setOf(
+            if (snapshot.state in setOf(
                     ActionState.EXECUTED_UNVERIFIED,
                     ActionState.UNKNOWN_REQUIRES_RECONCILIATION,
                     ActionState.VERIFIED_SUCCEEDED,
                     ActionState.VERIFIED_FAILED,
                     ActionState.COMPENSATED,
+                    ActionState.MANUAL_INTERVENTION,
                 )
-            ) return ExecutionView(request, existing)
+            ) return ExecutionView(snapshot, existing)
         }
-        requireVersion(request, expectedStateVersion)
-        val case = loadCase(actor, request.caseId)
-        expireWhenApprovalIsStale(request, definition, case, actor)
-        if (case.stateVersion != request.boundCaseStateVersion ||
-            case.domainVersion != request.domainVersion || case.policyVersion != request.policyVersion
-        ) {
-            val expired = ActionStateMachine.transition(request, ActionState.EXPIRED, clock.instant())
-            actions.save(expired, request.stateVersion)
-            throw OptimisticStateException("case", case.id, request.boundCaseStateVersion, case.stateVersion)
+        requireVersion(snapshot, expectedStateVersion)
+        if (snapshot.state != ActionState.APPROVED) throw BusinessValidationException("只有已审批且尚未执行的动作可以取得执行租约")
+        val request = committed(actor) {
+            val case = lockCase(actor, snapshot.caseId)
+            val current = currentAction(actor, snapshot)
+            approvalFailure(actor, current, definition, case)?.let { return@committed Result.failure(it) }
+            val executing = ActionStateMachine.transition(current, ActionState.EXECUTING, clock.instant())
+            actions.save(executing, current.stateVersion)
+            audit(actor, "actionRequest", executing.id, "action.execution_lease_acquired", mapOf("caseId" to executing.caseId))
+            Result.success(executing)
         }
-        request = ActionStateMachine.transition(request, ActionState.EXECUTING, clock.instant())
-        actions.save(request, expectedStateVersion)
-
         val result = try {
             invokeConnector(definition, "执行") {
                 connector.execute(definition, request)
@@ -385,26 +394,16 @@ class FoundationKernel(
                 ambiguous = true,
             )
         }
-        receipts.save(result.receipt)
-        val target = if (result.ambiguous || result.receipt.outcome == ReceiptOutcome.UNKNOWN) {
-            ActionState.UNKNOWN_REQUIRES_RECONCILIATION
-        } else {
-            ActionState.EXECUTED_UNVERIFIED
+        val receipt = result.receipt.copy(verificationId = null, compensationVerificationId = null, updatedAt = clock.instant())
+        return committed(actor) {
+            val case = lockCase(actor, request.caseId)
+            val current = rawAction(actor, request.id)
+            if (current.stateVersion != request.stateVersion || current.state != ActionState.EXECUTING) {
+                recordLateConnectorResult(actor, request, current, receipt, "execute")
+                return@committed Result.failure(OptimisticStateException("actionRequest", request.id, request.stateVersion, current.stateVersion))
+            }
+            Result.success(commitExecutionOutcome(actor, current, case, receipt, result.ambiguous))
         }
-        request = ActionStateMachine.transition(request, target, clock.instant())
-        actions.save(request, request.stateVersion - 1)
-        val verificationCase = markCaseInProgress(actor, case.id)
-        val beforeBinding = request.stateVersion
-        request = request.copy(
-            verificationBoundCaseStateVersion = verificationCase.stateVersion,
-            stateVersion = request.stateVersion + 1,
-            updatedAt = clock.instant(),
-        )
-        actions.save(request, beforeBinding)
-        audit(actor, "actionRequest", request.id,
-            if (target == ActionState.UNKNOWN_REQUIRES_RECONCILIATION) "action.execution_unknown" else "action.executed_unverified",
-            mapOf("caseId" to request.caseId, "receiptId" to result.receipt.id))
-        return ExecutionView(request, result.receipt)
     }
 
     fun verify(
@@ -413,158 +412,174 @@ class FoundationKernel(
         expectedActionStateVersion: Long,
         expectedCaseStateVersion: Long,
     ): VerificationView {
-        var request = getAction(actor, actionRequestId)
+        val request = getAction(actor, actionRequestId)
         requireAnyRole(actor, setOf(BusinessRole.WAREHOUSE_APPROVER, BusinessRole.AUDITOR, BusinessRole.ADMIN))
         requireVersion(request, expectedActionStateVersion)
-        val caseAtVerification = loadCase(actor, request.caseId)
-        if (caseAtVerification.stateVersion != expectedCaseStateVersion) {
-            throw OptimisticStateException(
-                "case",
-                caseAtVerification.id,
-                expectedCaseStateVersion,
-                caseAtVerification.stateVersion,
-            )
+        val caseSnapshot = loadCase(actor, request.caseId)
+        if (caseSnapshot.stateVersion != expectedCaseStateVersion) {
+            throw OptimisticStateException("case", caseSnapshot.id, expectedCaseStateVersion, caseSnapshot.stateVersion)
         }
         val existingVerification = getVerification(actor, request.id)
-        val existingReceipt = receipts.findByActionRequestId(actor.tenantId, request.id)
+        val receipt = read(actor) { receipts.findByActionRequestId(actor.tenantId, request.id) }
             ?: throw BusinessValidationException("动作尚无外部回执，不能验证")
         if (existingVerification != null && request.state in terminalVerificationStates) {
-            return VerificationView(request, existingReceipt, existingVerification,
-                memories.findAll(actor.tenantId).firstOrNull {
-                    request.caseId in it.sourceCaseIds && canRead(actor, it.tenantId, it.aclRef)
-                })
+            val memorySnapshot = read(actor) { memories.findAll(actor.tenantId) }
+            return VerificationView(request, receipt, existingVerification,
+                memorySnapshot.firstOrNull { request.caseId in it.sourceCaseIds && canRead(actor, it.tenantId, it.aclRef) })
+        }
+        val definition = definitionFor(request)
+        if (request.state == ActionState.COMPENSATING) {
+            return committed(actor) {
+                lockCase(actor, request.caseId)
+                val current = currentAction(actor, request)
+                if (clock.instant().isBefore(current.updatedAt.plus(definition.timeout).plus(EXECUTION_RECONCILIATION_GRACE))) {
+                    return@committed Result.failure(BusinessValidationException("补偿仍在执行租约窗口内，禁止并发接管或重放"))
+                }
+                val manual = manualInTransaction(actor, current, "补偿租约已过期；只允许人工对账，不会重新调用补偿器")
+                if (existingVerification == null) Result.failure(BusinessValidationException("补偿已转人工，原验证记录缺失，需要人工核对"))
+                else Result.success(VerificationView(manual, receipt, existingVerification))
+            }
         }
         if (request.state !in setOf(ActionState.EXECUTED_UNVERIFIED, ActionState.UNKNOWN_REQUIRES_RECONCILIATION)) {
             throw BusinessValidationException("当前动作状态 ${request.state} 不允许验证")
         }
-        val definition = definitionFor(request)
         if (definition.version != request.definitionVersion) {
             moveActionToManualIntervention(actor, request, "验证器所属动作定义版本已变化")
             throw BusinessValidationException("动作定义版本变化后禁止使用新验证器判定旧动作")
         }
-        if (request.verificationBoundCaseStateVersion != caseAtVerification.stateVersion ||
-            request.domainVersion != caseAtVerification.domainVersion ||
-            request.policyVersion != caseAtVerification.policyVersion
-        ) {
+        if (!verificationContextMatches(request, caseSnapshot)) {
             moveActionToManualIntervention(actor, request, "案件、领域包或策略在执行后发生变化")
             throw BusinessValidationException("执行后案件版本已变化，旧回执必须人工对账")
         }
         val verification = try {
-            invokeConnector(definition, "验证") {
-                connector.verify(definition, request, existingReceipt)
-            }
+            invokeConnector(definition, "验证") { connector.verify(definition, request, receipt) }
         } catch (_: Exception) {
             moveActionToManualIntervention(actor, request, "独立验证器不可用或超过动作时限")
             throw BusinessValidationException("独立验证器不可用或超过动作时限，已转人工对账")
         }
         try {
-            validateVerification(
-                actor = actor,
-                request = request,
-                receipt = existingReceipt,
-                case = caseAtVerification,
-                verification = verification,
-                expectedVerifierId = definition.verifierId,
-                expectedPurpose = VerificationPurpose.ACTION,
-                expectedId = StableIds.from("verification", request.tenantId, request.id),
-                allowedResolvedGapCodes = definition.resolvableGapCodes,
-            )
+            validateVerification(actor, request, receipt, caseSnapshot, verification, definition.verifierId,
+                VerificationPurpose.ACTION, StableIds.from("verification", request.tenantId, request.id), definition.resolvableGapCodes)
         } catch (failure: BusinessValidationException) {
             moveActionToManualIntervention(actor, request, failure.message ?: "验证结果不可信")
             throw failure
         }
-        verifications.save(verification)
-        var receipt = existingReceipt.copy(verificationId = verification.id, updatedAt = clock.instant())
-        receipts.save(receipt)
-        var candidate: MemoryAsset? = null
-
-        when (verification.outcome) {
-            VerificationOutcome.PASSED -> {
-                request = ActionStateMachine.transition(request, ActionState.VERIFIED_SUCCEEDED, clock.instant())
-                actions.save(request, request.stateVersion - 1)
-                val remainingGaps = caseAtVerification.knowledgeGaps.filterNot {
-                    it.id in verification.resolvedKnowledgeGapIds
-                }
-                val resolvesBusinessException = remainingGaps.isEmpty()
-                cases.save(caseAtVerification.copy(
-                    status = if (resolvesBusinessException) CaseStatus.VERIFIED_CLOSED else CaseStatus.IN_PROGRESS,
-                    knowledgeGaps = remainingGaps,
-                    stateVersion = caseAtVerification.stateVersion + 1,
-                    updatedAt = clock.instant(),
-                ), caseAtVerification.stateVersion)
-                if (resolvesBusinessException) candidate = createMemoryCandidate(request, verification)
+        val needsCompensation = verification.outcome == VerificationOutcome.FAILED &&
+            definition.compensationActionId != null && receipt.outcome != ReceiptOutcome.FAILED
+        val checkpoint = committed(actor) {
+            val currentCase = lockCase(actor, request.caseId)
+            val current = currentAction(actor, request)
+            if (!sameCaseSnapshot(caseSnapshot, currentCase) || !verificationContextMatches(current, currentCase)) {
+                manualInTransaction(actor, current, "独立验证返回前案件发生变化，结果不能用于自动结案")
+                return@committed Result.failure(BusinessValidationException("验证期间案件发生变化，已转人工对账"))
             }
-            VerificationOutcome.FAILED -> {
-                request = ActionStateMachine.transition(request, ActionState.VERIFIED_FAILED, clock.instant())
-                actions.save(request, request.stateVersion - 1)
-                if (definition.compensationActionId != null && existingReceipt.outcome != ReceiptOutcome.FAILED) {
-                    request = ActionStateMachine.transition(request, ActionState.COMPENSATING, clock.instant())
-                    actions.save(request, request.stateVersion - 1)
-                    receipt = try {
-                        invokeConnector(definition, "补偿") {
-                            connector.compensate(definition, request, receipt)
-                        }.also {
-                            validateReceipt(request, it, ambiguous = false)
-                            if (it.outcome != ReceiptOutcome.COMPENSATED) {
-                                throw BusinessValidationException("补偿器未返回可验证的补偿回执")
-                            }
-                        }
-                    } catch (_: Exception) {
-                        receipt
-                    }
-                    receipts.save(receipt)
-                    var compensationVerified = false
-                    if (receipt.outcome == ReceiptOutcome.COMPENSATED && definition.compensationVerifierId != null) {
-                        compensationVerified = try {
-                            val compensationVerification = invokeConnector(definition, "补偿验证") {
-                                connector.verifyCompensation(definition, request, receipt)
-                            }
-                            validateVerification(
-                                actor = actor,
-                                request = request,
-                                receipt = receipt,
-                                case = caseAtVerification,
-                                verification = compensationVerification,
-                                expectedVerifierId = definition.compensationVerifierId,
-                                expectedPurpose = VerificationPurpose.COMPENSATION,
-                                expectedId = StableIds.from("compensation-verification", request.tenantId, request.id),
-                                allowedResolvedGapCodes = emptySet(),
-                            )
-                            verifications.save(compensationVerification)
-                            receipt = receipt.copy(
-                                compensationVerificationId = compensationVerification.id,
-                                updatedAt = clock.instant(),
-                            )
-                            receipts.save(receipt)
-                            compensationVerification.outcome == VerificationOutcome.PASSED
-                        } catch (_: Exception) {
-                            false
-                        }
-                    }
-                    request = ActionStateMachine.transition(
-                        request,
-                        if (compensationVerified) ActionState.COMPENSATED else ActionState.MANUAL_INTERVENTION,
-                        clock.instant(),
-                    )
-                    actions.save(request, request.stateVersion - 1)
-                }
-                markCaseForManualIntervention(actor, request.caseId)
+            val remainingGaps = currentCase.knowledgeGaps.filterNot { it.id in verification.resolvedKnowledgeGapIds }
+            val candidateModelVersion = if (verification.outcome == VerificationOutcome.PASSED && remainingGaps.isEmpty())
+                boundRecommendationModelVersion(current) else null
+            var changed = current
+            val target = when (verification.outcome) {
+                VerificationOutcome.PASSED -> ActionState.VERIFIED_SUCCEEDED
+                VerificationOutcome.FAILED -> ActionState.VERIFIED_FAILED
+                VerificationOutcome.INCONCLUSIVE -> ActionState.UNKNOWN_REQUIRES_RECONCILIATION
             }
-            VerificationOutcome.INCONCLUSIVE -> {
-                if (request.state == ActionState.EXECUTED_UNVERIFIED) {
-                    request = ActionStateMachine.transition(request, ActionState.UNKNOWN_REQUIRES_RECONCILIATION, clock.instant())
-                    actions.save(request, request.stateVersion - 1)
-                }
-                markCaseForManualIntervention(actor, request.caseId)
+            if (changed.state != target) {
+                changed = ActionStateMachine.transition(changed, target, clock.instant())
+                actions.save(changed, current.stateVersion)
             }
+            if (needsCompensation) {
+                val before = changed
+                changed = ActionStateMachine.transition(changed, ActionState.COMPENSATING, clock.instant())
+                actions.save(changed, before.stateVersion)
+            }
+            verifications.save(verification)
+            val updatedReceipt = receipt.copy(verificationId = verification.id, updatedAt = clock.instant())
+            receipts.save(updatedReceipt)
+            var candidate: MemoryAsset? = null
+            if (verification.outcome == VerificationOutcome.PASSED) {
+                cases.save(currentCase.copy(status = if (remainingGaps.isEmpty()) CaseStatus.VERIFIED_CLOSED else CaseStatus.IN_PROGRESS,
+                    knowledgeGaps = remainingGaps, stateVersion = currentCase.stateVersion + 1, updatedAt = clock.instant()), currentCase.stateVersion)
+                if (candidateModelVersion != null) candidate = createMemoryCandidate(changed, verification, candidateModelVersion)
+            } else if (!needsCompensation) {
+                markCaseForManualIntervention(actor, current.caseId)
+            }
+            audit(actor, "actionRequest", changed.id, "verification.${verification.outcome.name.lowercase()}",
+                mapOf("caseId" to changed.caseId, "verificationId" to verification.id, "independentSource" to verification.independentSource))
+            if (needsCompensation) audit(actor, "actionRequest", changed.id, "compensation.lease_acquired", mapOf("caseId" to changed.caseId))
+            Result.success(VerificationView(changed, updatedReceipt, verification, candidate))
         }
-        audit(actor, "actionRequest", request.id, "verification.${verification.outcome.name.lowercase()}",
-            mapOf(
-                "caseId" to request.caseId,
-                "verificationId" to verification.id,
-                "independentSource" to verification.independentSource,
-            ))
-        return VerificationView(request, receipt, verification, candidate)
+        return if (needsCompensation) compensateAndVerify(actor, definition, checkpoint, caseSnapshot) else checkpoint
+    }
+
+    private fun compensateAndVerify(
+        actor: Actor,
+        definition: ActionDefinition,
+        checkpoint: VerificationView,
+        caseSnapshot: ExceptionCase,
+    ): VerificationView {
+        val observed = try {
+            invokeConnector(definition, "补偿") { connector.compensate(definition, checkpoint.request, checkpoint.receipt) }.also {
+                validateReceipt(checkpoint.request, it, ambiguous = false)
+                if (it.outcome != ReceiptOutcome.COMPENSATED) throw BusinessValidationException("补偿器未返回可验证的补偿回执")
+            }.copy(verificationId = checkpoint.verification.id, compensationVerificationId = null, updatedAt = clock.instant())
+        } catch (_: Exception) {
+            return finishCompensation(actor, checkpoint, checkpoint.receipt, null, caseSnapshot)
+        }
+        // Store the external observation and renew the lease before a separate bounded readback.
+        val renewed = committed(actor) {
+            val currentCase = lockCase(actor, checkpoint.request.caseId)
+            val current = rawAction(actor, checkpoint.request.id)
+            if (current.stateVersion != checkpoint.request.stateVersion || current.state != ActionState.COMPENSATING) {
+                recordLateConnectorResult(actor, checkpoint.request, current, observed, "compensate")
+                return@committed Result.failure(OptimisticStateException("actionRequest", current.id, checkpoint.request.stateVersion, current.stateVersion))
+            }
+            if (!sameCaseSnapshot(caseSnapshot, currentCase)) {
+                val manual = manualInTransaction(actor, current, "补偿返回前案件发生变化；保留回执并转人工")
+                receipts.save(observed)
+                return@committed Result.success(VerificationView(manual, observed, checkpoint.verification))
+            }
+            val lease = current.copy(stateVersion = current.stateVersion + 1, updatedAt = clock.instant())
+            actions.save(lease, current.stateVersion)
+            receipts.save(observed)
+            audit(actor, "actionRequest", lease.id, "compensation.receipt_recorded",
+                mapOf("caseId" to lease.caseId, "receiptId" to observed.id, "independentlyVerified" to "false"))
+            Result.success(VerificationView(lease, observed, checkpoint.verification))
+        }
+        if (renewed.request.state != ActionState.COMPENSATING) return renewed
+        val compensationVerification = try {
+            val verifier = definition.compensationVerifierId ?: throw BusinessValidationException("缺少独立补偿验证器")
+            invokeConnector(definition, "补偿验证") { connector.verifyCompensation(definition, renewed.request, observed) }.also {
+                validateVerification(actor, renewed.request, observed, caseSnapshot, it, verifier, VerificationPurpose.COMPENSATION,
+                    StableIds.from("compensation-verification", renewed.request.tenantId, renewed.request.id), emptySet())
+            }
+        } catch (_: Exception) { null }
+        return finishCompensation(actor, renewed, observed, compensationVerification, caseSnapshot)
+    }
+
+    private fun finishCompensation(
+        actor: Actor,
+        checkpoint: VerificationView,
+        observed: ActionReceipt,
+        compensationVerification: VerificationResult?,
+        caseSnapshot: ExceptionCase,
+    ): VerificationView = committed(actor) {
+        val currentCase = lockCase(actor, checkpoint.request.caseId)
+        val current = rawAction(actor, checkpoint.request.id)
+        if (current.stateVersion != checkpoint.request.stateVersion || current.state != ActionState.COMPENSATING) {
+            recordLateConnectorResult(actor, checkpoint.request, current, observed, "verify_compensation", compensationVerification)
+            return@committed Result.failure(OptimisticStateException("actionRequest", current.id, checkpoint.request.stateVersion, current.stateVersion))
+        }
+        val independentlyPassed = compensationVerification?.outcome == VerificationOutcome.PASSED && sameCaseSnapshot(caseSnapshot, currentCase)
+        val finished = ActionStateMachine.transition(current,
+            if (independentlyPassed) ActionState.COMPENSATED else ActionState.MANUAL_INTERVENTION, clock.instant())
+        actions.save(finished, current.stateVersion)
+        compensationVerification?.let(verifications::save)
+        val receipt = observed.copy(verificationId = checkpoint.verification.id,
+            compensationVerificationId = compensationVerification?.id, updatedAt = clock.instant())
+        receipts.save(receipt)
+        markCaseForManualIntervention(actor, current.caseId)
+        audit(actor, "actionRequest", finished.id, if (independentlyPassed) "compensation.verified" else "compensation.manual_intervention",
+            mapOf("caseId" to finished.caseId, "receiptId" to receipt.id, "independentlyVerified" to independentlyPassed.toString()))
+        Result.success(VerificationView(finished, receipt, checkpoint.verification))
     }
 
     fun reviewMemory(
@@ -574,7 +589,7 @@ class FoundationKernel(
         expectedStateVersion: Long,
     ): MemoryAsset {
         requireAnyRole(actor, setOf(BusinessRole.SALES_OWNER, BusinessRole.ADMIN))
-        val current = memories.findById(actor.tenantId, memoryId)
+        val current = read(actor) { memories.findById(actor.tenantId, memoryId) }
             ?.takeIf { canRead(actor, it.tenantId, it.aclRef) }
             ?: throw ResourceNotFoundException("memoryAsset", memoryId)
         if (current.stateVersion != expectedStateVersion) {
@@ -591,23 +606,29 @@ class FoundationKernel(
             stateVersion = current.stateVersion + 1,
             updatedAt = now,
         )
-        memories.save(reviewed, current.stateVersion)
-        audit(actor, "memoryAsset", reviewed.id, "memory.${reviewed.status.name.lowercase()}")
-        return reviewed
+        return unitOfWork.write(actor.tenantId) {
+            val fresh = memories.findById(actor.tenantId, memoryId) ?: throw ResourceNotFoundException("memoryAsset", memoryId)
+            if (fresh.stateVersion != current.stateVersion) throw OptimisticStateException("memoryAsset", memoryId, current.stateVersion, fresh.stateVersion)
+            memories.save(reviewed, current.stateVersion)
+            audit(actor, "memoryAsset", reviewed.id, "memory.${reviewed.status.name.lowercase()}")
+            reviewed
+        }
     }
 
     fun auditTrail(actor: Actor, aggregateId: String): List<AuditFact> {
         requireAggregateAccess(actor, aggregateId)
-        return audits.findByAggregate(actor.tenantId, aggregateId)
+        val snapshot = read(actor) { audits.findByAggregate(actor.tenantId, aggregateId) }
+        return snapshot.filter { auditVisible(actor, it) }
     }
 
     fun caseTimeline(actor: Actor, caseId: String): List<AuditFact> {
         getCase(actor, caseId)
-        return audits.findByCase(actor.tenantId, caseId).filter { auditVisible(actor, it) }
+        val snapshot = read(actor) { audits.findByCase(actor.tenantId, caseId) }
+        return snapshot.filter { auditVisible(actor, it) }
     }
 
     private fun loadCase(actor: Actor, caseId: String): ExceptionCase =
-        cases.findById(actor.tenantId, caseId) ?: throw ResourceNotFoundException("case", caseId)
+        read(actor) { cases.findById(actor.tenantId, caseId) } ?: throw ResourceNotFoundException("case", caseId)
 
     private fun visibleCase(actor: Actor, source: ExceptionCase): ExceptionCase {
         requireAnyRole(actor, caseReaderRoles)
@@ -649,20 +670,45 @@ class FoundationKernel(
     }
 
     private fun requireAggregateAccess(actor: Actor, aggregateId: String) {
-        when {
-            cases.findById(actor.tenantId, aggregateId) != null -> getCase(actor, aggregateId)
-            recommendations.findById(actor.tenantId, aggregateId) != null -> getRecommendation(actor, aggregateId)
-            actions.findById(actor.tenantId, aggregateId) != null -> getAction(actor, aggregateId)
-            memories.findById(actor.tenantId, aggregateId)?.let { canRead(actor, it.tenantId, it.aclRef) } == true -> Unit
+        val kind = read(actor) {
+            when {
+                cases.findById(actor.tenantId, aggregateId) != null -> "case"
+                recommendations.findById(actor.tenantId, aggregateId) != null -> "recommendation"
+                actions.findById(actor.tenantId, aggregateId) != null -> "action"
+                memories.findById(actor.tenantId, aggregateId) != null -> "memory"
+                else -> null
+            }
+        }
+        when (kind) {
+            "case" -> getCase(actor, aggregateId)
+            "recommendation" -> getRecommendation(actor, aggregateId)
+            "action" -> getAction(actor, aggregateId)
+            "memory" -> getMemory(actor, aggregateId)
             else -> throw ResourceNotFoundException("auditAggregate", aggregateId)
         }
     }
 
     private fun auditVisible(actor: Actor, fact: AuditFact): Boolean = runCatching {
-        requireAggregateAccess(actor, fact.aggregateId)
+        // Business IDs are unique within a type, never an authorization shortcut across types.
+        when (fact.aggregateType) {
+            "case" -> getCase(actor, fact.aggregateId)
+            "recommendation" -> getRecommendation(actor, fact.aggregateId)
+            "actionRequest" -> getAction(actor, fact.aggregateId)
+            "memoryAsset" -> getMemory(actor, fact.aggregateId)
+            else -> throw AuthorizationDeniedException("未登记审计对象类型的读取权限")
+        }
     }.isSuccess
 
-    private fun createMemoryCandidate(request: ActionRequest, verification: VerificationResult): MemoryAsset {
+    private fun boundRecommendationModelVersion(request: ActionRequest): String {
+        val recommendation = recommendations.findById(request.tenantId, request.recommendationId)
+            ?: throw ResourceNotFoundException("recommendation", request.recommendationId)
+        if (recommendation.tenantId != request.tenantId || recommendation.caseId != request.caseId || recommendation.modelVersion.isBlank()) {
+            throw BusinessValidationException("动作绑定的原建议缺少可靠模型来源，不能形成经验候选")
+        }
+        return recommendation.modelVersion
+    }
+
+    private fun createMemoryCandidate(request: ActionRequest, verification: VerificationResult, boundModelVersion: String): MemoryAsset {
         val now = clock.instant()
         val candidate = MemoryAsset(
             id = StableIds.from("memory", request.tenantId, request.caseId, request.id),
@@ -676,7 +722,7 @@ class FoundationKernel(
             validFrom = now,
             ownerId = request.requestedBy,
             aclRef = derivedMemoryAcl(request, verification),
-            modelVersion = model.modelVersion,
+            modelVersion = boundModelVersion,
             embeddingVersion = null,
             stateVersion = 0,
             createdAt = now,
@@ -750,25 +796,115 @@ class FoundationKernel(
         }
     }
 
-    private fun expireWhenApprovalIsStale(
+    private fun <T> read(actor: Actor, block: () -> T): T = unitOfWork.read(actor.tenantId, block)
+
+    /** Rejections represented as values commit deliberately persisted state before surfacing to the caller. */
+    private fun <T> committed(actor: Actor, block: () -> Result<T>): T = unitOfWork.write(actor.tenantId, block).getOrThrow()
+
+    private fun lockCase(actor: Actor, caseId: String): ExceptionCase =
+        cases.lockById(actor.tenantId, caseId) ?: throw ResourceNotFoundException("case", caseId)
+
+    private fun rawAction(actor: Actor, actionId: String): ActionRequest =
+        actions.findById(actor.tenantId, actionId) ?: throw ResourceNotFoundException("actionRequest", actionId)
+
+    private fun currentAction(actor: Actor, snapshot: ActionRequest): ActionRequest = rawAction(actor, snapshot.id).also {
+        requireVersion(it, snapshot.stateVersion)
+    }
+
+    private fun sameCaseSnapshot(expected: ExceptionCase, actual: ExceptionCase): Boolean =
+        expected.tenantId == actual.tenantId && expected.id == actual.id && expected.stateVersion == actual.stateVersion &&
+            expected.domainVersion == actual.domainVersion && expected.policyVersion == actual.policyVersion
+
+    private fun requireCaseSnapshot(expected: ExceptionCase, actual: ExceptionCase) {
+        if (!sameCaseSnapshot(expected, actual)) throw OptimisticStateException("case", expected.id, expected.stateVersion, actual.stateVersion)
+    }
+
+    private fun verificationContextMatches(request: ActionRequest, case: ExceptionCase): Boolean =
+        request.verificationBoundCaseStateVersion == case.stateVersion && request.domainVersion == case.domainVersion &&
+            request.policyVersion == case.policyVersion
+
+    private fun approvalFailure(
+        actor: Actor,
         request: ActionRequest,
         definition: ActionDefinition,
         case: ExceptionCase,
-        actor: Actor,
-    ) {
-        val now = clock.instant()
+    ): RuntimeException? {
         val reason = when {
             definition.version != request.definitionVersion -> "动作定义版本已变化"
-            !now.isBefore(request.approvalExpiresAt) -> "审批窗口已过期"
+            !clock.instant().isBefore(request.approvalExpiresAt) -> "审批窗口已过期"
             else -> null
         }
-        if (reason != null && request.state in setOf(ActionState.AWAITING_APPROVAL, ActionState.APPROVED)) {
-            val expired = ActionStateMachine.transition(request, ActionState.EXPIRED, now)
+        val contextChanged = case.stateVersion != request.boundCaseStateVersion || case.domainVersion != request.domainVersion ||
+            case.policyVersion != request.policyVersion
+        if (reason == null && !contextChanged) return null
+        if (request.state in setOf(ActionState.AWAITING_APPROVAL, ActionState.APPROVED)) {
+            val expired = ActionStateMachine.transition(request, ActionState.EXPIRED, clock.instant())
             actions.save(expired, request.stateVersion)
             audit(actor, "actionRequest", expired.id, "action.expired",
-                mapOf("caseId" to case.id, "reason" to reason))
-            throw BusinessValidationException(reason)
+                mapOf("caseId" to case.id, "reason" to (reason ?: "案件、领域包或策略版本已变化")))
         }
+        return if (reason != null) BusinessValidationException(reason)
+            else OptimisticStateException("case", case.id, request.boundCaseStateVersion, case.stateVersion)
+    }
+
+    /** Caller owns the case lock and the EXECUTING version; all result facts share its single commit. */
+    private fun commitExecutionOutcome(
+        actor: Actor,
+        initial: ActionRequest,
+        case: ExceptionCase,
+        receipt: ActionReceipt,
+        ambiguous: Boolean,
+        eventOverride: String? = null,
+    ): ExecutionView {
+        val canonicalReceipt = receipt.copy(updatedAt = clock.instant())
+        val contextChanged = case.stateVersion != initial.boundCaseStateVersion || case.domainVersion != initial.domainVersion ||
+            case.policyVersion != initial.policyVersion
+        val target = when {
+            contextChanged -> ActionState.MANUAL_INTERVENTION
+            ambiguous || receipt.outcome == ReceiptOutcome.UNKNOWN -> ActionState.UNKNOWN_REQUIRES_RECONCILIATION
+            else -> ActionState.EXECUTED_UNVERIFIED
+        }
+        var changed = ActionStateMachine.transition(initial, target, clock.instant())
+        actions.save(changed, initial.stateVersion)
+        receipts.save(canonicalReceipt)
+        val verificationCase = if (contextChanged) {
+            markCaseForManualIntervention(actor, case.id)
+            loadCase(actor, case.id)
+        } else markCaseInProgress(actor, case.id)
+        val beforeBinding = changed.stateVersion
+        changed = changed.copy(verificationBoundCaseStateVersion = verificationCase.stateVersion,
+            stateVersion = changed.stateVersion + 1, updatedAt = clock.instant())
+        actions.save(changed, beforeBinding)
+        val event = eventOverride ?: when (target) {
+            ActionState.MANUAL_INTERVENTION -> "action.execution_context_changed"
+            ActionState.UNKNOWN_REQUIRES_RECONCILIATION -> "action.execution_unknown"
+            else -> "action.executed_unverified"
+        }
+        audit(actor, "actionRequest", changed.id, event,
+            mapOf("caseId" to changed.caseId, "receiptId" to canonicalReceipt.id, "state" to target.name))
+        return ExecutionView(changed, canonicalReceipt)
+    }
+
+    /** Preserve an immutable observation; never overwrite a reconciled canonical receipt with a late response. */
+    private fun recordLateConnectorResult(
+        actor: Actor,
+        leased: ActionRequest,
+        current: ActionRequest,
+        observed: ActionReceipt,
+        operation: String,
+        verification: VerificationResult? = null,
+    ) {
+        audit(actor, "actionRequest", leased.id, "action.late_connector_result", mapOf(
+            "caseId" to leased.caseId, "operation" to operation, "receiptId" to observed.id,
+            "externalRequestId" to observed.externalRequestId.take(180),
+            "externalReceiptId" to (observed.externalReceiptId?.take(180) ?: "not-returned"),
+            "compensationReceiptId" to (observed.compensationReceiptId?.take(180) ?: "not-returned"),
+            "outcome" to observed.outcome.name, "leasedVersion" to leased.stateVersion.toString(),
+            "currentVersion" to current.stateVersion.toString(), "currentState" to current.state.name,
+            "attemptedFrom" to (observed.attempts.minOfOrNull { it.startedAt }?.toString() ?: "not-returned"),
+            "attemptedUntil" to (observed.attempts.maxOfOrNull { it.completedAt }?.toString() ?: "not-returned"),
+            "verificationId" to (verification?.id ?: "not-returned"), "independentlyAccepted" to "false",
+        ))
     }
 
     private fun validateRecommendation(case: ExceptionCase, recommendation: Recommendation): ActionDefinition {
@@ -991,51 +1127,79 @@ class FoundationKernel(
     }
 
     private fun moveActionToManualIntervention(actor: Actor, initial: ActionRequest, reason: String) {
+        unitOfWork.write(actor.tenantId) {
+            lockCase(actor, initial.caseId)
+            manualInTransaction(actor, currentAction(actor, initial), reason)
+        }
+    }
+
+    private fun manualInTransaction(actor: Actor, initial: ActionRequest, reason: String): ActionRequest {
         var request = initial
         if (request.state == ActionState.EXECUTED_UNVERIFIED) {
-            val unknown = ActionStateMachine.transition(
-                request,
-                ActionState.UNKNOWN_REQUIRES_RECONCILIATION,
-                clock.instant(),
-            )
+            val unknown = ActionStateMachine.transition(request, ActionState.UNKNOWN_REQUIRES_RECONCILIATION, clock.instant())
             actions.save(unknown, request.stateVersion)
             request = unknown
         }
-        if (request.state == ActionState.UNKNOWN_REQUIRES_RECONCILIATION) {
+        if (request.state in setOf(ActionState.UNKNOWN_REQUIRES_RECONCILIATION, ActionState.COMPENSATING, ActionState.VERIFIED_FAILED, ActionState.EXECUTING)) {
             val manual = ActionStateMachine.transition(request, ActionState.MANUAL_INTERVENTION, clock.instant())
             actions.save(manual, request.stateVersion)
             request = manual
         }
         markCaseForManualIntervention(actor, request.caseId)
-        audit(actor, "actionRequest", request.id, "action.manual_intervention",
-            mapOf("caseId" to request.caseId, "reason" to reason))
+        audit(actor, "actionRequest", request.id, "action.manual_intervention", mapOf("caseId" to request.caseId, "reason" to reason))
+        return request
     }
 
-    private fun fingerprint(recommendation: Recommendation, expectedVersion: Long): String {
-        val canonical = buildString {
-            append(recommendation.tenantId).append('|').append(recommendation.caseId).append('|')
-            append(recommendation.id).append('|').append(recommendation.actionDefinitionId).append('|')
-            append(expectedVersion).append('|')
-            recommendation.actionInput.toSortedMap().forEach { (key, value) -> append(key).append('=').append(value).append(';') }
+    /** Hashes are diagnostic bindings; durable replay is authorized by actual fields, including legacy hashes. */
+    private fun sameActionSemantics(actor: Actor, existing: ActionRequest, recommendation: Recommendation, expectedVersion: Long): Boolean =
+        existing.tenantId == actor.tenantId && existing.tenantId == recommendation.tenantId &&
+            existing.caseId == recommendation.caseId && existing.recommendationId == recommendation.id &&
+            existing.definitionId == recommendation.actionDefinitionId && existing.requestedBy == actor.id &&
+            existing.expectedCaseStateVersion == expectedVersion && existing.domainVersion == recommendation.domainVersion &&
+            existing.policyVersion == recommendation.policyVersion && existing.evidenceIds == recommendation.evidenceIds &&
+            equivalentInputs(existing.input, recommendation.actionInput)
+
+    private fun equivalentInputs(one: Map<String, Any>, two: Map<String, Any>): Boolean = one.keys == two.keys && one.keys.all { key ->
+        val left = one[key]
+        val right = two[key]
+        when {
+            left is String && right is String -> left == right
+            left is Boolean && right is Boolean -> left == right
+            left is Number && right is Number -> runCatching { BigDecimal(left.toString()).compareTo(BigDecimal(right.toString())) == 0 }.getOrDefault(false)
+            else -> false
         }
-        return MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray())
-            .joinToString("") { "%02x".format(it) }
     }
 
-    private fun recommendationFingerprint(recommendation: Recommendation): String {
-        val canonical = buildString {
-            append(recommendation.actionDefinitionId).append('|')
-            append(recommendation.rationaleZh).append('|')
-            recommendation.actionInput.toSortedMap().forEach { (key, value) ->
-                append(key).append('=').append(value).append(';')
-            }
-            append('|')
-            recommendation.evidenceIds.sorted().forEach { append(it).append(';') }
-            append('|').append(recommendation.modelVersion)
+    private fun fingerprint(recommendation: Recommendation, expectedVersion: Long): String = structuredDigest(
+        "smartdata.action-request-fingerprint.v2", listOf(recommendation.tenantId, recommendation.caseId, recommendation.id,
+            recommendation.actionDefinitionId, expectedVersion.toString(), encodedInput(recommendation.actionInput)),
+    )
+
+    private fun recommendationFingerprint(recommendation: Recommendation): String = structuredDigest(
+        "smartdata.recommendation-fingerprint.v2", listOf(recommendation.actionDefinitionId, recommendation.rationaleZh,
+            encodedInput(recommendation.actionInput), framed("evidence-set.v2", recommendation.evidenceIds.sorted()), recommendation.modelVersion),
+    )
+
+    private fun encodedInput(input: Map<String, Any>): String = framed("typed-action-input.v2", input.toSortedMap().flatMap { (key, value) ->
+        val scalar = when (value) {
+            is String -> framed("string", listOf(value))
+            is Number -> framed("number", listOf(runCatching { BigDecimal(value.toString()).stripTrailingZeros().toPlainString() }
+                .getOrElse { throw BusinessValidationException("动作数值不能规范化") }))
+            is Boolean -> framed("boolean", listOf(value.toString()))
+            else -> throw BusinessValidationException("动作输入仅允许已定义的标量字段")
         }
-        return MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray())
-            .joinToString("") { "%02x".format(it) }
+        listOf(key, scalar)
+    })
+
+    private fun framed(domain: String, fields: List<String>): String = buildString {
+        fun token(value: String) { append(value.toByteArray(Charsets.UTF_8).size).append(':').append(value) }
+        token(domain)
+        token(fields.size.toString())
+        fields.forEach(::token)
     }
+
+    private fun structuredDigest(domain: String, fields: List<String>): String = MessageDigest.getInstance("SHA-256")
+        .digest(framed(domain, fields).toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     private fun audit(
         actor: Actor,
@@ -1072,5 +1236,6 @@ class FoundationKernel(
         val result: CompletableFuture<ExecutionView>,
     )
 
-    private val inFlightExecutions = ConcurrentHashMap<String, InFlightExecution>()
+    private data class ExecutionKey(val tenantId: String, val actionRequestId: String)
+    private val inFlightExecutions = ConcurrentHashMap<ExecutionKey, InFlightExecution>()
 }

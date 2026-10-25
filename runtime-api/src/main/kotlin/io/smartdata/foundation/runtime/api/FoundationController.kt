@@ -336,9 +336,10 @@ class FoundationController(
 
     private fun actor(request: HttpServletRequest): Actor = actors.resolve(request)
 
-    private fun actorAuthorizationContext(actor: Actor): String {
-        return listOf(actor.id, actor.roles.map { it.name }.sorted().joinToString(",")).joinToString("|")
-    }
+    private fun actorAuthorizationContext(actor: Actor): Map<String, Any> = mapOf(
+        "actorId" to actor.id,
+        "roles" to actor.roles.map { it.name }.sorted(),
+    )
 }
 
 @RestController

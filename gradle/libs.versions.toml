@@ -8,6 +8,7 @@ jackson2 = "2.21.8"
 tomcat = "11.0.27"
 networknt = "3.0.7"
 cyclonedx = "3.3.0"
+testcontainers = "2.0.5"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -31,6 +32,8 @@ jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref
 jackson-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "networknt" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

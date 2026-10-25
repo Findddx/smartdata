@@ -13,6 +13,7 @@ SmartData 把连接来源、盘点资产、保留证据、诊断问题、协作�
 ## 现在可以做什么
 
 - 连接 JSON 样本、业务 JSON API 和 PostgreSQL 的只读来源。
+- 保存版本化业务目标、工作范围和指标定义；按目标安排助手，定义由负责人确认，变更后重新审核。
 - 盘点数据资产和字段，检查缺失、重复、类型与更新时间，查看实际观测和样本边界。
 - 组织运维、分析和决策三类规则助手，按发现分工、引用证据、讨论、接手和复核任务。
 - 可选接入私有服务、火山方舟或百炼的兼容模型接口，保留证据引用、未知项、模型版本和失败记录；具体供应商仍需使用自己的授权实测。
@@ -22,7 +23,7 @@ SmartData 把连接来源、盘点资产、保留证据、诊断问题、协作�
 
 ## 本机启动
 
-需要 JDK 25、Node.js 24+。Windows 在项目目录运行：
+需要 JDK 25（Java 服务运行环境）、Node.js 24+（前端工具运行环境）。Windows 在项目目录运行：
 
 ```powershell
 .\scripts\start-local.ps1
@@ -47,6 +48,7 @@ npm run dev
 | 位置 | 职责 |
 |---|---|
 | `runtime-api/.../workspace` | 本地保存、只读接入、资产体检、规则／模型解释与协作 |
+| `runtime-api/.../postgres` | PostgreSQL 18 仓储、事务、企业行隔离、审计及待发事件；生产装配仍有独立验收门 |
 | `foundation-kernel` | 证据、未知与冲突、类型化动作、审批、验证与履约仿真 |
 | `workflow-worker` | 可恢复的长流程与审批等待；API 尚未接入其编排 |
 | `domain-compiler`、`domain-packs` | 把业务对象、规则和动作说明编译成稳定契约 |
@@ -66,7 +68,9 @@ npm run build
 # mcp-bridge 目录：go vet ./...，go test -race ./...
 ```
 
-本轮成果与验收见[阶段报告](docs/reports/2026-10-25-workspace-delivery.md)，履约样板的历史记录见[实施状态](docs/implementation-status.md)。默认生产模式拒绝在缺少真实存储、身份、权限、模型和连接器适配时启动；生产部署仍须完成[部署门禁](docs/operations/production-deployment.md)。现有数据库结构、消息拓扑和 Helm 文件不代表这些适配器已实现，也未证明计划中的大规模容量。
+首轮工作区成果见[工作区交付](docs/reports/2026-10-25-workspace-delivery.md)，后续目标、范围与可靠存储改造见[本轮阶段报告](docs/reports/2026-10-25-business-postgresql-delivery.md)；履约样板的历史见[实施状态](docs/implementation-status.md)。
+
+PostgreSQL 仓储已实现，完整生产装配、消息投递和外部权限适配仍待验收。默认生产模式在缺少必要组件时拒绝启动；生产部署须完成[部署门禁](docs/operations/production-deployment.md)。部署文件不能证明这些能力已接通，也未证明计划中的大规模容量。
 
 默认不会调用模型。启用后，用户提问与获准问题摘要会发送到指定端点；连接器原始记录不自动进入提示词，用户也不应在提问中粘贴原始记录或密钥。配置与边界见[模型接入说明](docs/operations/model-reasoning.md)。模型不是授权或验证的权威。重要写操作必须有人审批，超时不确定时先对账，不能盲重试。
 

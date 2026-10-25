@@ -1,5 +1,6 @@
 export type WorkspaceViewId =
   | "overview"
+  | "business"
   | "assets"
   | "findings"
   | "team"
@@ -88,6 +89,9 @@ export interface WorkspaceAssistant {
   method: string;
   findingIds: string[];
   taskIds: string[];
+  focusGoalIds?: string[];
+  scopeSourceIds?: string[];
+  scopeNotice?: string;
 }
 export interface WorkspaceTask {
   id: string;
@@ -103,6 +107,14 @@ export interface WorkspaceTask {
   evidenceRefs: string[];
   stateVersion: number;
   verifiedBy?: string | null;
+  goalIds?: string[];
+  inCurrentScope?: boolean;
+  scopeReason?: string;
+  businessBriefVersion?: number | null;
+  createdUnderBriefVersion?: number | null;
+  currentFindingId?: string | null;
+  priorityRank?: number;
+  priorityReason?: string;
 }
 export interface WorkspaceComment {
   id: string;
@@ -157,10 +169,63 @@ export interface WorkspaceState {
   comments: WorkspaceComment[];
   messages: WorkspaceMessage[];
   audit: WorkspaceAudit[];
+  businessBrief?: BusinessBrief | null;
   capabilities: {
     assistantMethod?: string;
     [key: string]: unknown;
   };
+}
+export type BusinessGoalType =
+  | "DATA_RELIABILITY"
+  | "ANALYTICS_TRUST"
+  | "ORDER_FULFILLMENT"
+  | "INVENTORY_ACCURACY"
+  | "COST_CONTROL"
+  | "CUSTOM";
+export interface BusinessGoal {
+  id: string;
+  title: string;
+  type: BusinessGoalType;
+  expectedOutcome: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  sourceIds: string[];
+}
+export interface MetricDraft {
+  id: string;
+  name: string;
+  businessDefinition: string;
+  owner: string;
+  timeZone: string;
+  currency: string | null;
+  formulaDescription: string;
+  sourceIds: string[];
+}
+export interface BusinessMetric extends MetricDraft {
+  status: "DRAFT" | "CONFIRMED";
+  stateVersion: number;
+  calculationStatus: "NOT_COMPUTED";
+  confirmedBy?: string | null;
+  confirmedAt?: string | null;
+}
+export interface BusinessBrief {
+  version: number;
+  enterpriseName: string;
+  businessDescription: string;
+  goals: BusinessGoal[];
+  includedSourceIds: string[];
+  metrics: BusinessMetric[];
+  updatedAt: string;
+  updatedBy: string;
+  modelContextExportEnabled: false;
+}
+export interface BusinessBriefCommand {
+  expectedStateVersion: number;
+  expectedBriefVersion: number;
+  enterpriseName: string;
+  businessDescription: string;
+  goals: BusinessGoal[];
+  includedSourceIds: string[];
+  metrics: MetricDraft[];
 }
 export interface SourceDraft {
   expectedStateVersion: number;

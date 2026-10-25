@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.spring.boot.oauth2.resource.server)
     implementation(libs.spring.boot.actuator)
     implementation(libs.spring.boot.jdbc)
+    implementation("org.jooq:jooq")
     implementation("org.springframework.ai:spring-ai-openai")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
@@ -56,4 +57,40 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// Real PostgreSQL checks are a separate mandatory CI gate. Unit tests must not
+// silently substitute an embedded database when Docker is unavailable.
+val integrationTest by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+
+dependencies {
+    add(integrationTest.implementationConfigurationName, platform(libs.testcontainers.bom))
+    add(integrationTest.implementationConfigurationName, libs.testcontainers.postgresql)
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs mandatory PostgreSQL 18 integration tests against a real Testcontainers database."
+    group = "verification"
+    testClassesDirs = integrationTest.output.classesDirs
+    classpath = integrationTest.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    maxHeapSize = "768m"
+    shouldRunAfter(tasks.test)
+    failOnNoDiscoveredTests.set(true)
+    systemProperty("junit.jupiter.execution.parallel.enabled", "false")
+    systemProperty("org.jooq.no-logo", "true")
+    systemProperty("org.jooq.no-tips", "true")
+    systemProperty("smartdata.integration.checkoutRoot", rootProject.projectDir.absolutePath)
+    // This remains false/default in Testcontainers as well; absence is a test
+    // infrastructure failure, never a reason to report a skipped success.
+    environment("TESTCONTAINERS_RYUK_DISABLED", "false")
+    providers.gradleProperty("postgresPortableMetadata").orNull?.let {
+        systemProperty("smartdata.integration.portableMetadata", it)
+    }
 }

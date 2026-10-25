@@ -1,0 +1,267 @@
+{
+  "verifiedAtUtc": "2026-10-25T14:22:50.2366483Z",
+  "method": "Independent SHA-256 of Maven Central HTTPS artifacts; no redirects; existing hashes unchanged",
+  "scope": "Only additions compared with the supplied baseline. POM license declarations are recorded when present; inherited licenses require separate review.",
+  "artifactCount": 29,
+  "artifacts": [
+    {
+      "component": "com.github.docker-java:docker-java-api:3.7.1",
+      "artifact": "docker-java-api-3.7.1.jar",
+      "sha256": "dad153d484b1f4ef009e2fdbad27e07aeb3191122da52b8985507ac504300081",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-api/3.7.1/docker-java-api-3.7.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.docker-java:docker-java-api:3.7.1",
+      "artifact": "docker-java-api-3.7.1.pom",
+      "sha256": "8d3586d7080e0787a7212bed4f6fe11a54d52f9abeeca5f89bee208c6308b16c",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-api/3.7.1/docker-java-api-3.7.1.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.docker-java:docker-java-parent:3.7.1",
+      "artifact": "docker-java-parent-3.7.1.pom",
+      "sha256": "78e673434e0e1a4b825863a8fe4d6417f495affdce7b4d308f3774447a73b0ff",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-parent/3.7.1/docker-java-parent-3.7.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.docker-java:docker-java-transport:3.7.1",
+      "artifact": "docker-java-transport-3.7.1.jar",
+      "sha256": "d15eec8034bf0f92c2a48ca9172691804048115c96dc853272f9486fa2695c3c",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-transport/3.7.1/docker-java-transport-3.7.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.docker-java:docker-java-transport:3.7.1",
+      "artifact": "docker-java-transport-3.7.1.pom",
+      "sha256": "3baef9998eeea238ef4432fe2ce0ff0eeaf90fe8d3a03fd06a5e224814be4916",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-transport/3.7.1/docker-java-transport-3.7.1.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.docker-java:docker-java-transport-zerodep:3.7.1",
+      "artifact": "docker-java-transport-zerodep-3.7.1.jar",
+      "sha256": "b89bdb1754160323597f9ea32a7fe7a4a3aa8f5b3b43b88e8d71fff3b267ab21",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-transport-zerodep/3.7.1/docker-java-transport-zerodep-3.7.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.docker-java:docker-java-transport-zerodep:3.7.1",
+      "artifact": "docker-java-transport-zerodep-3.7.1.pom",
+      "sha256": "d72f69b2f40ba791f3b32cab4f165ccc11836ff1811d0533751cf2dcc57495ed",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/docker-java/docker-java-transport-zerodep/3.7.1/docker-java-transport-zerodep-3.7.1.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.r2dbc:r2dbc-spi:1.0.0.RELEASE",
+      "artifact": "r2dbc-spi-1.0.0.RELEASE.jar",
+      "sha256": "a5846c59fea336431a4ae72ca14edbf5299b78486fa308eafb383f4ae0ea74e5",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/r2dbc/r2dbc-spi/1.0.0.RELEASE/r2dbc-spi-1.0.0.RELEASE.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.r2dbc:r2dbc-spi:1.0.0.RELEASE",
+      "artifact": "r2dbc-spi-1.0.0.RELEASE.pom",
+      "sha256": "9d6a7765c1baffa7d6dfd651d8e555105f1ccd218fbb2ee6123d42f03c4848b3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/r2dbc/r2dbc-spi/1.0.0.RELEASE/r2dbc-spi-1.0.0.RELEASE.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License 2.0"
+      ]
+    },
+    {
+      "component": "io.r2dbc:r2dbc-spi-parent:1.0.0.RELEASE",
+      "artifact": "r2dbc-spi-parent-1.0.0.RELEASE.pom",
+      "sha256": "f7357e8f1f560835452f4a4896c0f93f4dcac72217ee8b613d6072de2e0555b4",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/r2dbc/r2dbc-spi-parent/1.0.0.RELEASE/r2dbc-spi-parent-1.0.0.RELEASE.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License 2.0"
+      ]
+    },
+    {
+      "component": "net.java.dev.jna:jna:5.18.1",
+      "artifact": "jna-5.18.1.jar",
+      "sha256": "260c4b1e22b1db9e110ee441c4f13ce115f841fa48c41d78750986214b395557",
+      "officialUrl": "https://repo.maven.apache.org/maven2/net/java/dev/jna/jna/5.18.1/jna-5.18.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "net.java.dev.jna:jna:5.18.1",
+      "artifact": "jna-5.18.1.pom",
+      "sha256": "98b62ae6ff280d747fb359fc42e48fed113d45bc3729a823dc30b8308a806645",
+      "officialUrl": "https://repo.maven.apache.org/maven2/net/java/dev/jna/jna/5.18.1/jna-5.18.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "LGPL-2.1-or-later",
+        "Apache-2.0"
+      ]
+    },
+    {
+      "component": "org.jetbrains:annotations:17.0.0",
+      "artifact": "annotations-17.0.0.jar",
+      "sha256": "195fb0da046d55bb042e91543484cf1da68b02bb7afbfe031f229e45ac84b3f2",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/17.0.0/annotations-17.0.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jetbrains:annotations:17.0.0",
+      "artifact": "annotations-17.0.0.pom",
+      "sha256": "8390ee0b4dff7f568b1336e061f694e77d761a505169aed8964e75482c990eed",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/17.0.0/annotations-17.0.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.jooq:jooq:3.21.7",
+      "artifact": "jooq-3.21.7.jar",
+      "sha256": "4ee61c1e71b16e00363fb60c0cd8c9fb6a1a2e8797df6e09b8e01c1c63db68d0",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jooq/jooq/3.21.7/jooq-3.21.7.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jooq:jooq:3.21.7",
+      "artifact": "jooq-3.21.7.pom",
+      "sha256": "5361da60df9ec4bad8b74833e2d4decfc726561f05e52c9f63904cfa18e4c700",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jooq/jooq/3.21.7/jooq-3.21.7.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.jooq:jooq-parent:3.21.7",
+      "artifact": "jooq-parent-3.21.7.pom",
+      "sha256": "30072c0af6559a36cb6bbdaddf4ca02d68efa93d8695214876b3e68847f7bf62",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jooq/jooq-parent/3.21.7/jooq-parent-3.21.7.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.junit:junit-bom:5.8.2",
+      "artifact": "junit-bom-5.8.2.module",
+      "sha256": "40cfad993fa70ecdf2af74d0c56da1484ee220964be8f932cfe632be9a2733fa",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/junit/junit-bom/5.8.2/junit-bom-5.8.2.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.junit:junit-bom:5.8.2",
+      "artifact": "junit-bom-5.8.2.pom",
+      "sha256": "836069ca9e8ee3c56e48376222da291263f137bd3fd16d84fdd47efcc3f286e2",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/junit/junit-bom/5.8.2/junit-bom-5.8.2.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Eclipse Public License v2.0"
+      ]
+    },
+    {
+      "component": "org.rnorth.duct-tape:duct-tape:1.0.8",
+      "artifact": "duct-tape-1.0.8.jar",
+      "sha256": "31cef12ddec979d1f86d7cf708c41a17da523d05c685fd6642e9d0b2addb7240",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.rnorth.duct-tape:duct-tape:1.0.8",
+      "artifact": "duct-tape-1.0.8.pom",
+      "sha256": "2636f66debe6e12437632f23a67b9bc961b03633009e52527a3bbc871f4069b4",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT"
+      ]
+    },
+    {
+      "component": "org.testcontainers:testcontainers:2.0.5",
+      "artifact": "testcontainers-2.0.5.jar",
+      "sha256": "0466f481343d5f350a91274cd7bf984308cbaf90d706247fd1cf4b1a8010c2e1",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers/2.0.5/testcontainers-2.0.5.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.testcontainers:testcontainers:2.0.5",
+      "artifact": "testcontainers-2.0.5.pom",
+      "sha256": "78839aaa8e34da1c483deb57e4f383a8045abacda5549bc79840f25794963103",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers/2.0.5/testcontainers-2.0.5.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT"
+      ]
+    },
+    {
+      "component": "org.testcontainers:testcontainers-database-commons:2.0.5",
+      "artifact": "testcontainers-database-commons-2.0.5.jar",
+      "sha256": "0ebbc62bdcfb315cb840a63fbaa148b455927666d9034b5e5c00009d84c755b0",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-database-commons/2.0.5/testcontainers-database-commons-2.0.5.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.testcontainers:testcontainers-database-commons:2.0.5",
+      "artifact": "testcontainers-database-commons-2.0.5.pom",
+      "sha256": "1be61fe838a86a0eacf6d52adcd0564ea728d6add53ac76daaf874ea3e19fff2",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-database-commons/2.0.5/testcontainers-database-commons-2.0.5.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT"
+      ]
+    },
+    {
+      "component": "org.testcontainers:testcontainers-jdbc:2.0.5",
+      "artifact": "testcontainers-jdbc-2.0.5.jar",
+      "sha256": "0f7fe603a32692c33739cf99d638206f9060ca47615bf0141ca2eb32d33d764a",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-jdbc/2.0.5/testcontainers-jdbc-2.0.5.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.testcontainers:testcontainers-jdbc:2.0.5",
+      "artifact": "testcontainers-jdbc-2.0.5.pom",
+      "sha256": "aeaac6dcd5b8a128e2ae5d723f4f7b460b656937a30ce7caac0b0091569a8f66",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-jdbc/2.0.5/testcontainers-jdbc-2.0.5.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT"
+      ]
+    },
+    {
+      "component": "org.testcontainers:testcontainers-postgresql:2.0.5",
+      "artifact": "testcontainers-postgresql-2.0.5.jar",
+      "sha256": "8dbfb2fda977eb813ed1188ce02f098b8b634910eeab220568d54d6bd5b7ce9f",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-postgresql/2.0.5/testcontainers-postgresql-2.0.5.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.testcontainers:testcontainers-postgresql:2.0.5",
+      "artifact": "testcontainers-postgresql-2.0.5.pom",
+      "sha256": "8f68c9fbec5a242dffbb01ea6a2d3a99104f1f0af6fd54d10cbdf7e5a47e1a10",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/testcontainers/testcontainers-postgresql/2.0.5/testcontainers-postgresql-2.0.5.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT"
+      ]
+    }
+  ]
+}

@@ -7,6 +7,10 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.ConcurrentHashMap
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+import tools.jackson.databind.MapperFeature
+import tools.jackson.databind.SerializationFeature
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.KotlinModule
 
 /**
  * HTTP command replay boundary. Production must replace this local-only gate
@@ -25,9 +29,10 @@ interface CommandIdempotencyGate {
 @Component
 @Profile("local")
 class InMemoryCommandIdempotencyGate : CommandIdempotencyGate {
+    private data class CommandKey(val tenantId: String, val key: String)
     private data class CommandSlot(val fingerprint: String, val result: CompletableFuture<Any>)
 
-    private val commands = ConcurrentHashMap<String, CommandSlot>()
+    private val commands = ConcurrentHashMap<CommandKey, CommandSlot>()
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any> execute(
@@ -38,7 +43,7 @@ class InMemoryCommandIdempotencyGate : CommandIdempotencyGate {
         operation: () -> T,
     ): T {
         require(key.length in 8..128) { "Idempotency-Key 长度必须为 8 到 128 个字符" }
-        val scopedKey = "$tenantId::$key"
+        val scopedKey = CommandKey(tenantId, key)
         val candidate = CommandSlot(fingerprint, CompletableFuture())
         val prior = commands.putIfAbsent(scopedKey, candidate)
         if (prior != null) {
@@ -59,9 +64,20 @@ class InMemoryCommandIdempotencyGate : CommandIdempotencyGate {
     }
 }
 
+private val fingerprintMapper = JsonMapper.builder()
+    .addModule(KotlinModule.Builder().build())
+    .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+    .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+    .build()
+
+/**
+ * Hash the structured command, never a DTO's toString or delimiter-joined fields.
+ * The version prefix deliberately rejects old ambiguous hashes on replay: the
+ * local workspace log cannot reconstruct their original request bodies safely.
+ */
 fun commandFingerprint(vararg values: Any?): String {
-    val canonical = values.joinToString(separator = "\u001f") { it?.toString() ?: "<null>" }
-    return MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(Charsets.UTF_8))
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.update("smartdata.http-command.v2\u0000".toByteArray(Charsets.UTF_8))
+    return "v2:" + digest.digest(fingerprintMapper.writeValueAsBytes(values.toList()))
         .joinToString("") { "%02x".format(it) }
 }

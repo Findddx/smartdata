@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SmartData local workspace API
-  version: 1.0.0
+  version: 1.1.0
   license: { name: Apache-2.0, identifier: Apache-2.0 }
   description: >-
     本地工作区的只读来源接入、数据盘点、证据和人员协作契约。仅在显式 local profile
@@ -40,6 +40,61 @@ paths:
           content:
             application/json:
               schema: { $ref: '../workspace/workspace.schema.json#/$defs/WorkspaceReport' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/business-brief:
+    post:
+      tags: [Workspace]
+      summary: 保存企业背景、目标、工作范围和指标口径
+      operationId: saveWorkspaceBusinessBrief
+      description: >-
+        具有工作区编辑权限的本地角色可保存，审计员只读。首次 expectedBriefVersion 为 0；之后同时检查
+        工作区版本和业务约定版本。范围是本轮工作选择，不增加来源授权；空范围暂停当前任务安排。
+        修改指标定义或来源会退回 DRAFT，确认字段由服务端维护。公式仅是文字说明，不执行查询。
+        业务原文不自动发送给模型。所有旧版本保留，历史达到 100 个版本时明确拒绝继续覆盖。
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/SaveBusinessBriefCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/business-brief/history:
+    get:
+      tags: [Workspace]
+      summary: 查看同租户的业务约定历史
+      operationId: getWorkspaceBusinessBriefHistory
+      description: 按保存顺序返回不可变业务约定版本，含指标定义、确认身份和时间；不返回来源原始数据。
+      responses:
+        '200':
+          description: 同租户的历史业务约定，尚未设置时为空数组。
+          content:
+            application/json:
+              schema: { $ref: '../workspace/workspace.schema.json#/$defs/BusinessBriefHistory' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/business-brief/metrics/{metricId}/confirm:
+    post:
+      tags: [Workspace]
+      summary: 由业务负责人确认指标口径
+      operationId: confirmWorkspaceMetricDefinition
+      description: >-
+        仅 SALES_OWNER 或 ADMIN；检查工作区、约定和指标三个版本。完整的业务定义、负责人、
+        合法时区、公式说明及至少一个已纳入且未断开的来源均必需。确认业务定义不会计算指标值，
+        calculationStatus 仍为 NOT_COMPUTED，也不会核验或关闭任何修复任务。
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - name: metricId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/ConfirmMetricDefinitionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
         default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
   /workspace/sources:
     post:

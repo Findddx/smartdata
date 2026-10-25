@@ -24,6 +24,7 @@ data class WorkspaceView(
     val messages: List<AssistantMessage>,
     val audit: List<WorkspaceAudit>,
     val capabilities: WorkspaceCapabilities,
+    val businessBrief: BusinessBrief? = null,
 )
 
 data class WorkspaceCapabilities(
@@ -114,6 +115,9 @@ data class AssistantView(
     val method: String = "DETERMINISTIC_RULES",
     val findingIds: List<String> = emptyList(),
     val taskIds: List<String> = emptyList(),
+    val focusGoalIds: List<String> = emptyList(),
+    val scopeSourceIds: List<String> = emptyList(),
+    val scopeNotice: String = "尚未登记业务目标，暂按检查规则安排工作。",
 )
 
 data class TaskView(
@@ -130,6 +134,14 @@ data class TaskView(
     val evidenceRefs: List<String> = emptyList(),
     val stateVersion: Long = 1,
     val verifiedBy: String? = null,
+    val goalIds: List<String> = emptyList(),
+    val inCurrentScope: Boolean = true,
+    val scopeReason: String = "按已观察问题安排工作。",
+    val businessBriefVersion: Long? = null,
+    val createdUnderBriefVersion: Long? = null,
+    val priorityRank: Int = 100,
+    val priorityReason: String = "按规则严重程度排序。",
+    val currentFindingId: String? = null,
 )
 
 data class TaskComment(val id: String, val taskId: String, val actorId: String, val body: String, val evidenceRefs: List<String>, val createdAt: String)
@@ -224,4 +236,6 @@ data class PersistedWorkspace(
     val audit: MutableList<WorkspaceAudit> = mutableListOf(),
     val commands: MutableMap<String, String> = mutableMapOf(),
     val modelBudgetReservations: MutableList<ModelBudgetReservation> = mutableListOf(),
+    var businessBrief: BusinessBrief? = null,
+    val businessBriefHistory: MutableList<BusinessBrief> = mutableListOf(),
 )

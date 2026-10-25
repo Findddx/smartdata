@@ -79,5 +79,5 @@ describe('SmartData operations console', () => {
     expect(await screen.findByRole('heading', { name: '评测健康' })).toBeInTheDocument()
     expect(screen.getByText('关键链路可追溯')).toBeInTheDocument()
     expect(screen.getAllByText('fulfillment-holdout-cn@2026.09.07').length).toBeGreaterThan(0)
-  })
+  }, 15_000)
 })

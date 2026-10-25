@@ -24,6 +24,9 @@ vi.mock("./client", () => ({
     report: vi.fn(),
     resetDemo: vi.fn(),
     replaceSnapshot: vi.fn(),
+    saveBusinessBrief: vi.fn(),
+    confirmMetric: vi.fn(),
+    businessBriefHistory: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -195,6 +198,25 @@ beforeEach(() => {
 });
 
 describe("企业数据工作空间", () => {
+  it("retains an unsaved business brief while the user checks another workspace page", async () => {
+    const initial = fixture();
+    initial.businessBrief = null;
+    vi.mocked(workspaceClient.get).mockResolvedValue(initial);
+    renderWorkspace();
+    await screen.findByRole("heading", { name: /每一个发现/ });
+    fireEvent.click(screen.getByRole("button", { name: "业务约定" }));
+    await screen.findByRole("heading", { name: /先把“做好”说清楚/ });
+    fireEvent.change(screen.getByLabelText("企业或业务团队名称"), {
+      target: { value: "尚未保存的业务团队" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
+    await screen.findByRole("heading", { name: /各有所长/ });
+    fireEvent.click(screen.getByRole("button", { name: "业务约定" }));
+    expect(await screen.findByLabelText("企业或业务团队名称")).toHaveValue(
+      "尚未保存的业务团队",
+    );
+    expect(workspaceClient.saveBusinessBrief).not.toHaveBeenCalled();
+  }, 15_000);
   it("does not advertise a role switch when the built console will not send rehearsal identities", async () => {
     vi.stubEnv("DEV", false);
     vi.stubEnv("VITE_DEMO_AUTH", "false");

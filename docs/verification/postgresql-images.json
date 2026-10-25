@@ -1,0 +1,40 @@
+{
+  "verifiedOn": "2026-10-25",
+  "method": "Docker Hub tag digest matched to Docker Registry manifest response header and locally computed SHA-256 of the HTTPS manifest bytes. TLS certificate verification remained enabled.",
+  "scope": "Immutable multi-architecture manifests and an explicitly selected local portable distribution used only by real PostgreSQL integration tests. This checks provenance and immutability, not image signatures or the absence of vulnerabilities.",
+  "localPortableDistribution": {
+    "name": "EnterpriseDB PostgreSQL 18.6-5 Windows x64 binaries",
+    "url": "https://get.enterprisedb.com/postgresql/postgresql-18.6-5-windows-x64-binaries.zip",
+    "sha256Source": "https://get.enterprisedb.com/postgresql/postgresql-18.6-5-windows-x64-binaries.zip.sha256",
+    "officialDistributionEntry": "https://www.postgresql.org/download/windows/",
+    "maintainerReleaseReference": "https://github.com/EnterpriseDB/edb-installers/issues/746",
+    "bytes": 384620317,
+    "sha256": "e2246ba91d22345bc3d017586c09ede52d9df180b1eeb480f050445f1cad84e2",
+    "localArchiveHashMatched": true,
+    "postgresExecutableAuthenticodeStatus": "NotSigned",
+    "executionScope": "Explicit local-only opt-in; rejected when CI=true; not a substitute for the mandatory Testcontainers CI job"
+  },
+  "images": [
+    {
+      "image": "postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+      "purpose": "PostgreSQL 18.6 database under test, fsync and synchronous_commit enabled explicitly",
+      "tagSource": "https://hub.docker.com/v2/repositories/library/postgres/tags/18.6-bookworm",
+      "manifestSource": "https://registry-1.docker.io/v2/library/postgres/manifests/18.6-bookworm",
+      "sha256": "bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+    },
+    {
+      "image": "testcontainers/ryuk:0.14.0@sha256:7c1a8a9a47c780ed0f983770a662f80deb115d95cce3e2daa3d12115b8cd28f0",
+      "purpose": "Testcontainers resource cleanup, kept enabled",
+      "tagSource": "https://hub.docker.com/v2/repositories/testcontainers/ryuk/tags/0.14.0",
+      "manifestSource": "https://registry-1.docker.io/v2/testcontainers/ryuk/manifests/0.14.0",
+      "sha256": "7c1a8a9a47c780ed0f983770a662f80deb115d95cce3e2daa3d12115b8cd28f0"
+    },
+    {
+      "image": "alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a",
+      "purpose": "Testcontainers startup checks; replaces the upstream unpinned tiny image",
+      "tagSource": "https://hub.docker.com/v2/repositories/library/alpine/tags/3.24.3",
+      "manifestSource": "https://registry-1.docker.io/v2/library/alpine/manifests/3.24.3",
+      "sha256": "be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
+    }
+  ]
+}
