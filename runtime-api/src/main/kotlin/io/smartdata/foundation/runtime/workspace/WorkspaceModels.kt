@@ -2,6 +2,7 @@ package io.smartdata.foundation.runtime.workspace
 
 import com.fasterxml.jackson.annotation.JsonSetter
 import com.fasterxml.jackson.annotation.Nulls
+import io.smartdata.foundation.runtime.workspace.lineage.LineageMappings
 
 enum class SourceKind { JSON_SNAPSHOT, HTTP_JSON, JDBC_POSTGRES_READONLY }
 enum class Provenance { USER, DEMO }
@@ -238,4 +239,6 @@ data class PersistedWorkspace(
     val modelBudgetReservations: MutableList<ModelBudgetReservation> = mutableListOf(),
     var businessBrief: BusinessBrief? = null,
     val businessBriefHistory: MutableList<BusinessBrief> = mutableListOf(),
+    var lineageMappings: LineageMappings = LineageMappings(),
+    val lineageMappingHistory: MutableList<LineageMappings> = mutableListOf(),
 )

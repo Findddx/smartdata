@@ -1,0 +1,34 @@
+{
+  "aggregateCheck": {
+    "decisionPlans": 28,
+    "lateOrders": 35863,
+    "netCents": 23975487278,
+    "orders": 250000
+  },
+  "databaseSha256": "c86b9147ba43292249007590a9cec38cb1b6f30fb70f583fe10f40f93b988983",
+  "datasets": {
+    "customer_entities": {
+      "materialization": "MATERIALIZED_DEMO",
+      "path": "outputs/customer_entities.csv",
+      "provenance": "DEMO",
+      "rows": 10000,
+      "sha256": "4759cfe68fbeb3b64cddefaaee09b8b84b6b978ac5db05fbab4bc79e772aabaf"
+    },
+    "daily_metrics": {
+      "materialization": "MATERIALIZED_DEMO",
+      "path": "outputs/daily_metrics.csv",
+      "provenance": "DEMO",
+      "rows": 28,
+      "sha256": "b6bc1e4e986cc5cff5633a27ac1e55503c5ed01bbb41d6f2092fbde051092894"
+    },
+    "decision_candidates": {
+      "materialization": "COMPUTED_PLAN_ONLY",
+      "path": "outputs/decision_candidates.csv",
+      "provenance": "DEMO",
+      "rows": 28,
+      "sha256": "cae81eee4fec6c39d603f4d6d8336238baf33f67678735a5f7e9db5421fd8eeb"
+    }
+  },
+  "elapsedSeconds": 2.005,
+  "maxRssKiB": 58128
+}

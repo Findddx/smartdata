@@ -1,0 +1,40 @@
+.sd-liquid-host { position: relative; isolation: isolate; }
+.sd-liquid-material {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  border-radius: var(--liquid-radius, 20px);
+  contain: layout style;
+  background: var(--liquid-solid, #f3f6f6);
+}
+.sd-liquid-material__lens, .sd-liquid-material__finish {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.sd-liquid-material__lens { overflow: hidden; }
+.sd-liquid-material__finish {
+  background: var(--liquid-tint, rgb(246 249 249 / .74));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .88), inset 0 -1px 0 rgb(41 57 61 / .09);
+  border: 1px solid rgb(255 255 255 / .54);
+}
+.sd-liquid-material[data-liquid-mode='svg-backdrop'],
+.sd-liquid-material[data-liquid-mode='art-refraction'] { background: transparent; }
+.sd-liquid-material[data-liquid-mode='solid'] .sd-liquid-material__lens { visibility: hidden; }
+.sd-liquid-material[data-liquid-mode='solid'] .sd-liquid-material__finish { background: transparent; }
+.sd-liquid-material__art { position: absolute; inset: 0 auto auto 0; max-width: none; pointer-events: none; }
+.sd-liquid-surface { overflow: hidden; border-radius: var(--liquid-radius, 20px); }
+.sd-liquid-surface__content { position: relative; z-index: 1; }
+@media (prefers-reduced-transparency: reduce) {
+  .sd-liquid-material { background: var(--liquid-solid, #f3f6f6) !important; }
+  .sd-liquid-material__lens { display: none; }
+  .sd-liquid-material__finish { background: transparent !important; }
+}
+@media (forced-colors: active) {
+  .sd-liquid-material { background: Canvas !important; border: 1px solid CanvasText; }
+  .sd-liquid-material__lens, .sd-liquid-material__finish { display: none; }
+}

@@ -1,0 +1,41 @@
+{
+  "environment": {
+    "computationDevice": "CPU_ON_AUTHORIZED_GPU_HOST",
+    "cpuAffinity": [
+      30,
+      31
+    ],
+    "gpuAccelerationUsed": false,
+    "gpuHardware": "NVIDIA GeForce RTX 5090 D, 32607 MiB",
+    "machine": "x86_64",
+    "os": "Linux",
+    "python": "3.12.3",
+    "sqlite": "3.45.1"
+  },
+  "scriptSha256": "8cd898fee66fa8f81a78409c5a4b46364ea6c78f64db95109035478c4271f885",
+  "transforms": [
+    {
+      "inputs": [
+        "raw_customers",
+        "raw_orders"
+      ],
+      "output": "customer_entities",
+      "sql": "create table customer_entities as select c.customer_id,c.region,count(o.order_id) as order_count,coalesce(sum(o.paid_cents-o.refund_cents),0) as net_cents from raw_customers c left join raw_orders o on c.customer_id=o.customer_id group by c.customer_id,c.region"
+    },
+    {
+      "inputs": [
+        "raw_orders"
+      ],
+      "output": "daily_metrics",
+      "sql": "create table daily_metrics as select order_day,count(*) as orders,count(distinct customer_id) as customers,sum(paid_cents) as paid_cents,sum(refund_cents) as refund_cents,sum(paid_cents-refund_cents) as net_cents,sum(late) as late_orders from raw_orders group by order_day"
+    },
+    {
+      "inputs": [
+        "daily_metrics"
+      ],
+      "output": "decision_candidates",
+      "sql": "create table decision_candidates as select order_day,late_orders,orders,'INVESTIGATE_FULFILLMENT' as proposed_action from daily_metrics where late_orders*100>orders*10"
+    }
+  ],
+  "version": "SYNTHETIC_RELATIONAL_LINEAGE_V1"
+}

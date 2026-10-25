@@ -7,10 +7,11 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "validate": "npm run validate:openapi && npm run validate:events && npm run validate:workspace",
-    "validate:openapi": "redocly lint openapi/smartdata-v1.yaml openapi/workspace-v1.yaml --config redocly.yaml",
+    "validate": "npm run validate:openapi && npm run validate:events && npm run validate:workspace && npm run validate:lineage",
+    "validate:openapi": "redocly lint openapi/smartdata-v1.yaml openapi/workspace-v1.yaml openapi/workspace-lineage-v1.yaml --config redocly.yaml",
     "validate:events": "node scripts/validate-events.mjs",
     "validate:workspace": "node scripts/validate-workspace.mjs",
+    "validate:lineage": "node scripts/validate-lineage.mjs",
     "smoke:workspace": "node scripts/smoke-workspace.mjs"
   },
   "devDependencies": {

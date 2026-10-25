@@ -1,4 +1,5 @@
 export type WorkspaceViewId =
+  | "graph"
   | "overview"
   | "business"
   | "assets"
@@ -248,4 +249,141 @@ export interface WorkspaceReport {
   title: string;
   sections: { title: string; text: string }[];
   evidenceRefs: string[];
+}
+
+export type DataLayer = "L0" | "L1" | "L2" | "L3";
+export type EvidenceNature = "OBSERVED" | "DECLARED" | "PLANNED";
+export interface LineageNode {
+  id: string;
+  layer: DataLayer;
+  kind:
+    | "SOURCE"
+    | "TABLE"
+    | "FIELD"
+    | "BUSINESS_ENTITY"
+    | "METRIC"
+    | "DECISION_PLAN";
+  label: string;
+  summary: string;
+  shape:
+    | "DATABASE_CYLINDER"
+    | "TABLE_GRID"
+    | "FIELD_PILL"
+    | "ENTITY_HEXAGON"
+    | "METRIC_CIRCLE"
+    | "DECISION_DIAMOND";
+  ref: {
+    type: string;
+    id: string;
+    sourceId?: string | null;
+    assetId?: string | null;
+    fieldName?: string | null;
+    definitionVersion?: number | null;
+  };
+  evidenceNature: EvidenceNature;
+  materialization: "METADATA_ONLY" | "NOT_MATERIALIZED";
+  provenance: Provenance;
+  sensitivity:
+    "UNKNOWN" | "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+  freshness: "CURRENT" | "STALE" | "UNKNOWN";
+  authorization: string;
+  scopeStatus: string;
+  sourceIds: string[];
+  evidenceRefs: LineageEvidenceRef[];
+  observedAt?: string | null;
+  notices: string[];
+}
+export interface LineageEvidenceRef {
+  sourceId: string;
+  assetId: string;
+  scanId: string;
+  sha256: string;
+  observedAt: string;
+}
+export interface LineageEdge {
+  id: string;
+  from: string;
+  to: string;
+  kind: "CONTAINS" | "MAPPED_TO" | "FEEDS_INTO" | "INFORMS";
+  evidenceNature: EvidenceNature;
+  lineStyle: "SOLID" | "DASHED" | "DOTTED";
+  evidenceRefs: LineageEvidenceRef[];
+  transformationStatus: "NOT_APPLICABLE" | "UNKNOWN" | "DECLARED_ONLY";
+  description: string;
+}
+export interface WorkspaceLineage {
+  stateVersion: number;
+  mappingVersion: number;
+  generatedAt: string;
+  scope: {
+    briefVersion: number | null;
+    sourceIds: string[];
+    excludedAuthorizedSourceCount: number;
+  };
+  nodes: LineageNode[];
+  edges: LineageEdge[];
+  notices: string[];
+  coverage?: {
+    partial: boolean;
+    totalSources: number;
+    shownSources: number;
+    totalTables: number;
+    shownTables: number;
+    totalFields: number;
+    shownFields: number;
+    omittedDerivedDefinitions: number;
+    nodeLimit: number;
+    edgeLimit: number;
+    fieldLimit: number;
+  };
+}
+export interface LineageFieldPage {
+  stateVersion: number;
+  sourceId: string;
+  assetId: string;
+  totalFields: number;
+  offset: number;
+  limit: number;
+  nodes: LineageNode[];
+  edges: LineageEdge[];
+  hasMore: boolean;
+}
+export interface PhysicalFieldRef {
+  sourceId: string;
+  assetId: string;
+  fieldName: string;
+}
+export interface EntityLineageMapping {
+  id: string;
+  name: string;
+  entityType: string;
+  inputFields: PhysicalFieldRef[];
+  transformationDescription: string;
+}
+export interface MetricLineageMapping {
+  metricId: string;
+  definitionVersion: number;
+  inputEntityIds: string[];
+  inputFields: PhysicalFieldRef[];
+  transformationDescription: string;
+}
+export interface DecisionLineageMapping {
+  goalId: string;
+  inputMetricIds: string[];
+  decisionQuestion: string;
+}
+export interface LineageMappings {
+  version: number;
+  entities: EntityLineageMapping[];
+  metrics: MetricLineageMapping[];
+  decisions: DecisionLineageMapping[];
+  updatedBy?: string | null;
+  updatedAt?: string | null;
+}
+export interface SaveLineageMappingsCommand {
+  expectedStateVersion: number;
+  expectedMappingVersion: number;
+  entities: EntityLineageMapping[];
+  metrics: MetricLineageMapping[];
+  decisions: DecisionLineageMapping[];
 }

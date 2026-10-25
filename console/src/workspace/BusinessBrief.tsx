@@ -224,7 +224,10 @@ export function BusinessBriefPage({
       expectedStateVersion: workspace.stateVersion,
       expectedBriefVersion: editingVersion,
     };
-    if (new TextEncoder().encode(JSON.stringify(body)).byteLength > 256 * 1024) {
+    if (
+      new TextEncoder().encode(JSON.stringify(body)).byteLength >
+      256 * 1024
+    ) {
       setErrorFor("form");
       setLocalError("这份约定过长，请精简部分定义或条目后保存。草稿仍保留。");
       return;
@@ -245,9 +248,7 @@ export function BusinessBriefPage({
       <header className="sd-page-title">
         <div>
           <span className="sd-overline">约定 / BUSINESS CONTEXT</span>
-          <h1>
-            先把“做好”说清楚<span>.</span>
-          </h1>
+          <h1>业务约定</h1>
           <p>
             目标决定优先顺序，范围限定本轮工作。共同确认口径，让团队沿着同一个方向推进。
           </p>

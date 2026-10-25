@@ -3,6 +3,7 @@ package io.smartdata.foundation.runtime.workspace
 import io.smartdata.foundation.domain.Actor
 import io.smartdata.foundation.domain.BusinessRole
 import io.smartdata.foundation.runtime.api.commandFingerprint
+import io.smartdata.foundation.runtime.workspace.lineage.*
 import io.smartdata.foundation.service.AuthorizationDeniedException
 import io.smartdata.foundation.service.BusinessValidationException
 import io.smartdata.foundation.service.IdempotencyConflictException
@@ -27,6 +28,31 @@ class WorkspaceService(
     private val profiler = DeterministicAssetProfiler(clock)
 
     fun view(actor: Actor): WorkspaceView = toView(store.read(actor.tenantId))
+
+    fun lineage(actor: Actor): LineageGraph {
+        if (actor.roles.isEmpty()) throw AuthorizationDeniedException("血缘图只向已授权工作区身份开放")
+        return LineageProjection(clock).graph(store.read(actor.tenantId))
+    }
+
+    fun lineageMappings(actor: Actor): LineageMappings {
+        requireAdministrator(actor)
+        return store.read(actor.tenantId).lineageMappings
+    }
+
+    fun lineageFields(actor: Actor, sourceId: String, assetId: String, offset: Int, limit: Int): LineageFieldPage {
+        if (actor.roles.isEmpty()) throw AuthorizationDeniedException("字段元数据只向已授权工作区身份开放")
+        return LineageProjection(clock).fields(store.read(actor.tenantId), sourceId, assetId, offset, limit)
+    }
+
+    fun saveLineageMappings(actor: Actor, key: String, body: SaveLineageMappingsCommand): WorkspaceView {
+        requireAdministrator(actor)
+        return mutate(actor, key, body.expectedStateVersion, "lineage_mappings.saved", "lineage-mappings", body) { state ->
+            require(state.lineageMappingHistory.size < 50) { "本地来源映射历史已达50版，请先迁移受控持久化适配器" }
+            val mapping = LineageProjection(clock).validate(state, body).copy(updatedBy = actor.id, updatedAt = now())
+            state.lineageMappings = mapping
+            state.lineageMappingHistory += mapping
+        }
+    }
 
     fun businessBriefHistory(actor: Actor): List<BusinessBrief> {
         val state = store.read(actor.tenantId)

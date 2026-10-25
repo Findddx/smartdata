@@ -185,7 +185,7 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   localStorage.clear();
   sessionStorage.clear();
-  window.location.hash = "";
+  window.location.hash = "/overview";
   vi.mocked(workspaceClient.get).mockReset().mockResolvedValue(fixture());
   if (!HTMLDialogElement.prototype.showModal)
     HTMLDialogElement.prototype.showModal = function () {
@@ -198,19 +198,36 @@ beforeEach(() => {
 });
 
 describe("企业数据工作空间", () => {
+  it("focuses the command input and waits for Chinese composition before opening a result", async () => {
+    renderWorkspace();
+    await screen.findByRole("heading", { name: "工作清单" });
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const input = screen.getByRole("combobox", { name: "搜索" });
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: "数据连接" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true, keyCode: 229 });
+    expect(
+      screen.getByRole("dialog", { name: "搜索工作空间" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(
+      await screen.findByRole("heading", { name: "数据连接" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
   it("retains an unsaved business brief while the user checks another workspace page", async () => {
     const initial = fixture();
     initial.businessBrief = null;
     vi.mocked(workspaceClient.get).mockResolvedValue(initial);
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "业务约定" }));
-    await screen.findByRole("heading", { name: /先把“做好”说清楚/ });
+    await screen.findByRole("heading", { name: "业务约定" });
     fireEvent.change(screen.getByLabelText("企业或业务团队名称"), {
       target: { value: "尚未保存的业务团队" },
     });
     fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
-    await screen.findByRole("heading", { name: /各有所长/ });
+    await screen.findByRole("heading", { name: "服务团队" });
     fireEvent.click(screen.getByRole("button", { name: "业务约定" }));
     expect(await screen.findByLabelText("企业或业务团队名称")).toHaveValue(
       "尚未保存的业务团队",
@@ -222,7 +239,7 @@ describe("企业数据工作空间", () => {
     vi.stubEnv("VITE_DEMO_AUTH", "false");
     localStorage.setItem("smartdata.localActor", "admin");
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     expect(
       screen.queryByRole("combobox", { name: "本地演示身份" }),
     ).not.toBeInTheDocument();
@@ -232,7 +249,7 @@ describe("企业数据工作空间", () => {
     vi.mocked(workspaceClient.get).mockRejectedValue(new Error("服务不可用"));
     renderWorkspace();
     expect(
-      await screen.findByRole("heading", { name: "让数据服务，先就位。" }),
+      await screen.findByRole("heading", { name: "无法连接工作区服务" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "重新连接" }),
@@ -243,7 +260,7 @@ describe("企业数据工作空间", () => {
 
   it("shows only active findings and exposes their exact observations and evidence bounds", async () => {
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     expect(screen.queryByText("历史缺失记录")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /订单标识重复/ }));
     const dialog = await screen.findByRole("dialog", { name: "订单标识重复" });
@@ -257,9 +274,9 @@ describe("企业数据工作空间", () => {
 
   it("links the decision assistant to tasks owned by another specialist rather than showing an empty list", async () => {
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
-    await screen.findByRole("heading", { name: /各有所长/ });
+    await screen.findByRole("heading", { name: "服务团队" });
     fireEvent.click(screen.getByRole("tab", { name: /决策助手/ }));
     expect(await screen.findByText("负责：数据分析助手")).toBeInTheDocument();
     expect(
@@ -292,7 +309,7 @@ describe("企业数据工作空间", () => {
       stateVersion: 9,
     });
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "连接数据" }));
     const dialog = await screen.findByRole("dialog", {
       name: "连接一个数据来源",
@@ -331,7 +348,7 @@ describe("企业数据工作空间", () => {
     state.sources[0]!.lastError = "来源返回 403，未获取新数据";
     vi.mocked(workspaceClient.get).mockResolvedValue(state);
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "数据连接" }));
     expect(
       await screen.findByText("来源返回 403，未获取新数据"),
@@ -342,10 +359,10 @@ describe("企业数据工作空间", () => {
 
   it("persists restrained themes and does not offer a nonfunctional production token login", async () => {
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "空间设置" }));
-    await screen.findByRole("heading", { name: /让这里/ });
-    fireEvent.click(screen.getByRole("button", { name: /钛灰 · 古铜/ }));
+    await screen.findByRole("heading", { name: "空间设置" });
+    fireEvent.click(screen.getByRole("button", { name: /石墨 · 钛银/ }));
     expect(localStorage.getItem("smartdata.theme")).toBe("titanium");
     expect(screen.queryByLabelText("临时访问令牌")).not.toBeInTheDocument();
     expect(screen.getByText(/本地角色切换用于功能演练/)).toBeInTheDocument();
@@ -377,7 +394,7 @@ describe("企业数据工作空间", () => {
     ];
     vi.mocked(workspaceClient.get).mockResolvedValue(state);
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
     fireEvent.click(await screen.findByRole("tab", { name: /分析助手/ }));
     expect(screen.getByText("模型分析 · 可追溯")).toBeInTheDocument();
@@ -418,7 +435,7 @@ describe("企业数据工作空间", () => {
       ],
     });
     renderWorkspace();
-    await screen.findByRole("heading", { name: /每一个发现/ });
+    await screen.findByRole("heading", { name: "工作清单" });
     fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
     fireEvent.click(await screen.findByRole("tab", { name: /分析助手/ }));
     fireEvent.change(screen.getByRole("textbox", { name: "向服务助手提问" }), {

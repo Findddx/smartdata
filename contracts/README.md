@@ -24,6 +24,25 @@ protoc --proto_path=contracts/connector \
 
 Generated descriptors and `node_modules` are build outputs and are not committed.
 
+## 分层与血缘契约
+
+`workspace/lineage-v1.schema.json` 固定元数据图、字段分页与来源声明的类型；
+`openapi/workspace-lineage-v1.yaml` 是新路径的唯一来源，并由工作区 OpenAPI 聚合。
+`npm run validate` 会同时检查它们，包括节点类型与层级/形状是否一致、来源声明
+是否被冒充已生成数据、线型与依据性质是否矛盾，以及图是否悬空或遗漏覆盖说明。
+这些检查不替代服务端的真实租户与授权校验。
+
+新图最多 3,000 节点、6,000 边，默认 256 字段；字段按表分页，每页最多 128。
+覆盖分母是本轮可见、已盘点的元数据，不代表企业全量数据或原始记录覆盖率。
+映射声明不执行 SQL，指标引用业务约定的现有定义版本，不另造第二套指标权威。
+
+可把实际接口响应保存到私有文件，再直接用同一套消费方检查核对：
+
+```powershell
+node scripts/validate-lineage.mjs --response ..\.local\lineage-response.json Graph
+node scripts/validate-lineage.mjs --response ..\.local\field-page.json FieldPage
+```
+
 ## 本地工作区的真实 HTTP 冒烟
 
 `openapi/workspace-v1.yaml` 与 `workspace/workspace.schema.json` 覆盖新增的来源、

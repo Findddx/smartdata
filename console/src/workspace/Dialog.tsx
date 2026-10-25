@@ -18,9 +18,12 @@ export function Dialog({
   const headingId = useId();
   useEffect(() => {
     const dialog = ref.current;
+    const previous = document.activeElement as HTMLElement | null;
     dialog?.showModal();
+    dialog?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     return () => {
       if (dialog?.open) dialog.close();
+      if (previous?.isConnected) previous.focus();
     };
   }, []);
   return (

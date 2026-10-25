@@ -10,14 +10,12 @@ import {
   Boxes,
   Braces,
   Check,
-  CheckCheck,
   ChevronDown,
   ChevronRight,
   CircleHelp,
   CirclePause,
   Database,
   FileCheck2,
-  FileJson,
   Fingerprint,
   FlaskConical,
   Globe2,
@@ -26,7 +24,6 @@ import {
   ListChecks,
   LoaderCircle,
   MessageSquare,
-  PanelLeftClose,
   Plus,
   RefreshCw,
   Search,
@@ -36,6 +33,8 @@ import {
   Sparkles,
   UsersRound,
   Workflow,
+  GitBranch,
+  PanelLeft,
   X,
 } from "lucide-react";
 import {
@@ -48,11 +47,11 @@ import {
   type FormEvent,
 } from "react";
 import { workspaceClient } from "./client";
+import { LiquidMaterial } from "../materials/LiquidMaterial";
+import { SmartDataMark } from "../brand/SmartDataMark";
 import { localRolesEnabled } from "./localRoles";
-import { DataFlow } from "./DataFlow";
 import {
   BusinessBriefPage,
-  BusinessContextSummary,
   type BusinessEditorSnapshot,
 } from "./BusinessBrief";
 import { Dialog } from "./Dialog";
@@ -68,11 +67,16 @@ import type {
   WorkspaceSource,
 } from "./types";
 import "./workspace.css";
+import "./desktop.css";
+import "./islands.css";
 
 const FulfillmentApp = lazy(() =>
   import("../FulfillmentApp").then((module) => ({
     default: module.FulfillmentApp,
   })),
+);
+const GraphView = lazy(() =>
+  import("./GraphView").then((module) => ({ default: module.GraphView })),
 );
 const LOCAL_ACTORS = [
   ["admin", "本地管理员"],
@@ -83,16 +87,18 @@ const LOCAL_ACTORS = [
 ] as const;
 
 const NAV = [
-  { id: "overview", label: "工作空间", icon: LayoutGrid },
-  { id: "business", label: "业务约定", icon: Target },
+  { id: "graph", label: "数据图谱", icon: GitBranch },
+  { id: "overview", label: "工作清单", icon: LayoutGrid },
   { id: "sources", label: "数据连接", icon: Link2 },
   { id: "assets", label: "数据资产", icon: Database },
   { id: "findings", label: "诊断发现", icon: Fingerprint },
   { id: "team", label: "服务团队", icon: UsersRound },
   { id: "tasks", label: "协作任务", icon: ListChecks },
+  { id: "business", label: "业务约定", icon: Target },
 ] as const;
 const TITLES: Record<WorkspaceViewId, string> = {
-  overview: "工作空间",
+  graph: "数据图谱",
+  overview: "工作清单",
   business: "业务约定",
   sources: "数据连接",
   assets: "数据资产",
@@ -181,6 +187,30 @@ function message(error: unknown) {
 function assistantMethod(method?: string) {
   return method === "SPRING_AI_EVIDENCE_V1" ? "模型分析" : "规则分析";
 }
+function auditLabel(event: string) {
+  return (
+    (
+      {
+        "metric_definition.confirmed": "确认了指标口径",
+        "business_brief.saved": "保存了业务约定",
+        "assistant.message_answered": "助手已整理答复",
+        "assistant.message_failed": "助手答复未完成",
+        "demo.loaded": "载入并检查了合成演示",
+        "demo.cleared": "退出了合成演示",
+        "source.added": "登记了数据来源",
+        "source.scanned": "完成了一次数据盘点",
+        "source.disconnected": "断开了数据来源",
+        "team.provisioned": "按当前发现更新了分工",
+        "lineage.mappings_saved": "保存了业务映射声明",
+        "task.accepted": "接手了协作任务",
+        "task.completed": "提交了处理结果",
+        "task.verified": "独立复核了任务结果",
+        "task.reopened": "重新打开了任务",
+        "task.commented": "补充了协作说明",
+      } as Record<string, string>
+    )[event] ?? event
+  );
+}
 function ruleLabel(ruleId: string) {
   if (ruleId.includes("MISSING")) return "字段完整性";
   if (ruleId.includes("MIXED")) return "字段类型";
@@ -191,20 +221,35 @@ function ruleLabel(ruleId: string) {
   return "数据质量检查";
 }
 function firstView(): WorkspaceViewId {
-  const value = window.location.hash.replace("#/", "");
+  const value = window.location.hash.replace("#/", "").split("?")[0] ?? "";
   return Object.keys(TITLES).includes(value)
     ? (value as WorkspaceViewId)
-    : "overview";
+    : "graph";
 }
 
 export function Workspace() {
   const queryClient = useQueryClient();
   const reduce = useReducedMotion();
   const [view, setView] = useState<WorkspaceViewId>(firstView);
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("smartdata.theme") ?? "linen",
-  );
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("smartdata.theme");
+    return saved && ["mineral", "titanium", "muse", "cinnabar"].includes(saved)
+      ? saved
+      : "mineral";
+  });
   const [navOpen, setNavOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(
+    () => window.innerWidth <= 760,
+  );
+  useEffect(() => {
+    const resized = () => setMobileViewport(window.innerWidth <= 760);
+    window.addEventListener("resize", resized);
+    return () => window.removeEventListener("resize", resized);
+  }, []);
+  const [navCollapsed, setNavCollapsed] = useState(
+    () => localStorage.getItem("smartdata.navCollapsed") === "true",
+  );
+  const environmentArtRef = useRef<HTMLImageElement | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const businessEditor = useRef<BusinessEditorSnapshot | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -253,6 +298,9 @@ export function Workspace() {
   useEffect(() => {
     localStorage.setItem("smartdata.theme", theme);
   }, [theme]);
+  useEffect(() => {
+    localStorage.setItem("smartdata.navCollapsed", String(navCollapsed));
+  }, [navCollapsed]);
   useEffect(() => {
     const leaving = (event: BeforeUnloadEvent) => {
       if (!businessEditor.current?.dirty) return;
@@ -427,7 +475,19 @@ export function Workspace() {
       </div>
     );
   return (
-    <div className="sd-workspace" data-theme={theme}>
+    <div
+      className={`sd-workspace sd-desktop ${navCollapsed ? "sd-nav-collapsed" : ""}`}
+      data-theme={theme === "linen" ? "mineral" : theme}
+      data-view={view}
+    >
+      <div className="sd-environment" aria-hidden="true">
+        <img
+          ref={environmentArtRef}
+          src="/art/strata-study-v1.webp"
+          alt=""
+          decoding="async"
+        />
+      </div>
       <a className="sd-skip" href="#sd-main">
         跳到工作区
       </a>
@@ -443,7 +503,7 @@ export function Workspace() {
       <aside
         id="sd-navigation"
         ref={sidebarRef}
-        className={`sd-sidebar ${navOpen ? "sd-nav-open" : ""}`}
+        className={`sd-sidebar sd-liquid-host ${navOpen ? "sd-nav-open" : ""}`}
         onKeyDown={(event) => {
           if (!navOpen) return;
           if (event.key === "Escape") {
@@ -468,6 +528,12 @@ export function Workspace() {
           }
         }}
       >
+        <LiquidMaterial
+          variant="navigation"
+          radius={20}
+          strength={12}
+          artRef={environmentArtRef}
+        />
         <button
           type="button"
           className="sd-nav-close sd-icon"
@@ -479,7 +545,7 @@ export function Workspace() {
         <button
           type="button"
           className="sd-wordmark"
-          onClick={() => navigate("overview")}
+          onClick={() => navigate("graph")}
           aria-label="SmartData 首页"
         >
           <BrandMark />
@@ -492,10 +558,14 @@ export function Workspace() {
           type="button"
           onClick={() => navigate("settings")}
         >
-          <span className="sd-org-avatar">S</span>
+          <span className="sd-org-avatar">
+            {workspace?.businessBrief?.enterpriseName.slice(0, 1) ?? "S"}
+          </span>
           <span>
-            <strong>我的工作空间</strong>
-            <small>{workspace ? "本地 · 持久保存" : "等待连接"}</small>
+            <strong>
+              {workspace?.businessBrief?.enterpriseName ?? "我的工作空间"}
+            </strong>
+            <small>{workspace ? "服务端文件存储" : "等待连接"}</small>
           </span>
           <ChevronDown size={14} />
         </button>
@@ -505,7 +575,7 @@ export function Workspace() {
           onClick={() => setSearchOpen(true)}
         >
           <Search size={15} />
-          <span>搜索工作空间</span>
+          <span>搜索与命令</span>
           <kbd>⌘ K</kbd>
         </button>
         <div className="sd-nav-label">工作台</div>
@@ -519,6 +589,8 @@ export function Workspace() {
               type="button"
               key={item.id}
               className={view === item.id ? "is-active" : ""}
+              title={item.label}
+              aria-label={item.label}
               onClick={() => navigate(item.id)}
               aria-current={view === item.id ? "page" : undefined}
             >
@@ -543,22 +615,21 @@ export function Workspace() {
         <button
           className="sd-specialty"
           type="button"
+          aria-label="履约异常处理"
+          title="履约异常处理"
           onClick={() => navigate("fulfillment")}
         >
           <FileCheck2 size={17} />
           <span>履约异常处理</span>
           <ArrowUpRight size={13} />
         </button>
-        <div className="sd-sidebar-note">
-          <span className="sd-small-orbit" aria-hidden="true" />
-          <p>
-            数据有来处。
-            <br />
-            协作有回响。
-          </p>
-        </div>
         <div className="sd-sidebar-bottom">
-          <button type="button" onClick={() => setGuideOpen(true)}>
+          <button
+            type="button"
+            aria-label="使用指南"
+            title="使用指南"
+            onClick={() => setGuideOpen(true)}
+          >
             <CircleHelp size={17} />
             <span>使用指南</span>
             <ArrowUpRight size={13} />
@@ -566,6 +637,8 @@ export function Workspace() {
           <button
             type="button"
             className={view === "settings" ? "is-active" : ""}
+            aria-label="空间设置"
+            title="空间设置"
             onClick={() => navigate("settings")}
           >
             <Settings2 size={17} />
@@ -604,23 +677,53 @@ export function Workspace() {
         </div>
       </aside>
       <div className="sd-shell-content" inert={navOpen}>
-        <header className="sd-topbar">
+        <header className="sd-topbar sd-liquid-host">
+          <LiquidMaterial
+            variant="toolbar"
+            radius={16}
+            strength={8}
+            artRef={environmentArtRef}
+          />
           <div>
             <button
               type="button"
               className="sd-icon sd-menu-button"
-              aria-label="打开导航"
-              aria-expanded={navOpen}
+              aria-label={
+                mobileViewport
+                  ? navOpen
+                    ? "关闭导航"
+                    : "打开导航"
+                  : navCollapsed
+                    ? "展开导航"
+                    : "收起导航"
+              }
+              aria-expanded={mobileViewport ? navOpen : !navCollapsed}
               aria-controls="sd-navigation"
-              onClick={() => setNavOpen(!navOpen)}
+              onClick={() =>
+                window.innerWidth <= 760
+                  ? setNavOpen(!navOpen)
+                  : setNavCollapsed(!navCollapsed)
+              }
             >
-              <PanelLeftClose size={18} />
+              <PanelLeft size={17} />
             </button>
-            <span>我的工作空间</span>
+            <span>
+              {workspace?.businessBrief?.enterpriseName ?? "我的工作空间"}
+            </span>
             <ChevronRight size={12} />
             <strong>{TITLES[view]}</strong>
           </div>
           <div>
+            <button
+              type="button"
+              className="sd-command-button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="搜索工作空间"
+            >
+              <Search size={14} />
+              <span>搜索与命令</span>
+              <kbd>⌘ K</kbd>
+            </button>
             <span
               className={`sd-connection-state ${query.isError ? "is-offline" : ""}`}
             >
@@ -628,7 +731,7 @@ export function Workspace() {
               {query.isError
                 ? "刷新失败"
                 : workspace
-                  ? "本地服务已连接"
+                  ? "工作区服务已连接"
                   : "正在连接"}
             </span>
             <button
@@ -680,9 +783,9 @@ export function Workspace() {
                 <Database size={34} strokeWidth={1} />
               </div>
               <span className="sd-overline">连接工作空间</span>
-              <h1>让数据服务，先就位。</h1>
+              <h1>无法连接工作区服务</h1>
               <p>
-                工作台暂时无法连接本地服务。启动 SmartData
+                工作台暂时无法连接工作区服务。启动 SmartData
                 后，已保存的数据来源和协作进展会出现在这里。
               </p>
               <code>
@@ -702,7 +805,7 @@ export function Workspace() {
           {workspace && (
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                className="sd-page"
+                className={`sd-page ${view === "graph" ? "sd-page-graph" : ""}`}
                 key={view}
                 initial={reduce ? false : { opacity: 0, y: 9 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -712,6 +815,35 @@ export function Workspace() {
                   ease: [0.22, 1, 0.36, 1],
                 }}
               >
+                {view === "graph" && (
+                  <Suspense
+                    fallback={
+                      <div className="sd-loading" role="status">
+                        正在打开数据图谱…
+                      </div>
+                    }
+                  >
+                    <GraphView
+                      artRef={environmentArtRef}
+                      workspace={workspace}
+                      canEdit={localActor === "admin"}
+                      pending={pending}
+                      onAsset={setAsset}
+                      navigate={navigate}
+                      onConnect={() => setSourceOpen(true)}
+                      onDemo={() => {
+                        void run("正在载入并检查演示数据", () =>
+                          workspaceClient.bootstrap(workspace.stateVersion),
+                        );
+                      }}
+                      onSave={(command) =>
+                        run("正在保存业务映射", () =>
+                          workspaceClient.saveLineageMappings(command),
+                        )
+                      }
+                    />
+                  </Suspense>
+                )}
                 {view === "overview" && (
                   <Overview
                     workspace={workspace}
@@ -724,7 +856,6 @@ export function Workspace() {
                     }
                     navigate={navigate}
                     onFinding={setFinding}
-                    onTask={setTask}
                     onExport={exportReport}
                   />
                 )}
@@ -1058,26 +1189,7 @@ export function Workspace() {
 }
 
 function BrandMark() {
-  return (
-    <svg
-      className="sd-brandmark"
-      viewBox="0 0 40 40"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M11 8h14l7 7v14L25 36H11l-7-7V15l7-7Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M4 15h14l7 7v14M11 8v14l7 7h14M18 15l7-7M11 22l-7 7M25 22l7-7M18 29l7-7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path d="m11 22 7-7 7 7-7 7-7-7Z" fill="currentColor" fillOpacity=".15" />
-    </svg>
-  );
+  return <SmartDataMark className="sd-brandmark" />;
 }
 function PageTitle({
   eyebrow,
@@ -1093,11 +1205,8 @@ function PageTitle({
   return (
     <header className="sd-page-title">
       <div>
-        <span className="sd-overline">{eyebrow}</span>
-        <h1>
-          {title}
-          <span className="sd-title-period">.</span>
-        </h1>
+        <span className="sd-sr-only">{eyebrow}</span>
+        <h1>{title}</h1>
         <p>{description}</p>
       </div>
       {children && <div className="sd-page-actions">{children}</div>}
@@ -1161,7 +1270,6 @@ function Overview({
   onDemo,
   navigate,
   onFinding,
-  onTask,
   onExport,
 }: {
   workspace: WorkspaceState;
@@ -1170,46 +1278,37 @@ function Overview({
   onDemo: () => void;
   navigate: (view: WorkspaceViewId) => void;
   onFinding: (finding: WorkspaceFinding) => void;
-  onTask: (task: WorkspaceTask) => void;
   onExport: () => void;
 }) {
-  const allDemo =
-    workspace.sources.length > 0 &&
-    workspace.sources.every((source) => source.provenance === "DEMO");
-  const complete = workspace.tasks.filter(
-    (task) => task.status === "VERIFIED",
-  ).length;
+  const currentTasks = workspace.tasks.filter(
+    (item) => item.inCurrentScope !== false && item.status !== "VERIFIED",
+  );
+  const goals = [...(workspace.businessBrief?.goals ?? [])].sort(
+    (a, b) =>
+      ({ HIGH: 0, MEDIUM: 1, LOW: 2 })[a.priority] -
+      { HIGH: 0, MEDIUM: 1, LOW: 2 }[b.priority],
+  );
   const priorityFindings = workspace.businessBrief
     ? Array.from(
         new Map(
-          workspace.tasks
-            .filter(
-              (item) =>
-                item.inCurrentScope !== false && item.status !== "VERIFIED",
-            )
-            .flatMap((item) => {
-              const found = workspace.findings.find(
-                (value) =>
-                  value.id === (item.currentFindingId ?? item.findingId),
-              );
-              return found ? [[found.id, found] as const] : [];
-            }),
+          currentTasks.flatMap((item) => {
+            const finding = workspace.findings.find(
+              (value) => value.id === (item.currentFindingId ?? item.findingId),
+            );
+            return finding ? [[finding.id, finding] as const] : [];
+          }),
         ).values(),
       )
     : workspace.findings;
   return (
     <>
       <PageTitle
-        eyebrow="工作空间 / OVERVIEW"
-        title={
-          workspace.sources.length
-            ? "每一个发现，都有下一步"
-            : "从数据，到更好的判断"
-        }
+        eyebrow="工作清单"
+        title="工作清单"
         description={
-          workspace.sources.length
-            ? "看清数据的状态，让合适的助手和业务伙伴接着往前走。"
-            : "连接你的业务，建立一支有依据、懂分工、可协作的数据服务团队。"
+          workspace.businessBrief
+            ? `按照约定 v${workspace.businessBrief.version} 的范围与目标安排。`
+            : "本轮发现、待办与最近记录。尚未设置企业自己的目标。"
         }
       >
         <button
@@ -1218,7 +1317,7 @@ function Overview({
           onClick={onExport}
           disabled={!workspace.sources.length}
         >
-          <ArrowDownToLine size={15} />
+          <ArrowDownToLine size={14} />
           导出报告
         </button>
         <button
@@ -1226,242 +1325,211 @@ function Overview({
           type="button"
           onClick={onConnect}
         >
-          <Plus size={16} />
+          <Plus size={14} />
           连接数据
         </button>
       </PageTitle>
-      {"businessBrief" in workspace && (
-        <BusinessContextSummary
-          brief={workspace.businessBrief}
-          onOpen={() => navigate("business")}
-        />
-      )}
-      {allDemo && (
-        <div className="sd-demo-banner">
-          <FlaskConical size={15} />
-          <span>
-            你正在探索电商演示工作区。所有数据均为合成样本，检查结果可打开核对。
-          </span>
-          <button type="button" onClick={onConnect}>
-            接入我的数据
-            <ArrowRight size={13} />
-          </button>
-        </div>
-      )}
-      <div className="sd-overview-columns">
-        <div className="sd-overview-primary">
-          <DataFlow
-            workspace={workspace}
-            onSource={() => navigate("assets")}
-            onFindings={() => navigate("findings")}
-            onTeam={() => navigate("team")}
-          />
-          {!workspace.sources.length ? (
-            <section className="sd-first-step">
-              <span className="sd-section-number">01 — 开始</span>
-              <h2>给你的业务，一次有依据的体检。</h2>
-              <p>
-                导入数据文件，或连接业务
-                API。先了解有哪些数据、哪里需要关注，再决定下一步由谁处理。
-              </p>
-              <div>
+      {!workspace.sources.length ? (
+        <section className="sd-start-workspace">
+          <div className="sd-start-symbol">
+            <Database size={30} strokeWidth={1.2} />
+          </div>
+          <h2>连接第一个来源</h2>
+          <p>导入JSON样本或连接只读接口。检查覆盖范围，再开始安排工作。</p>
+          <div>
+            <button
+              className="sd-button sd-primary"
+              type="button"
+              onClick={onConnect}
+            >
+              <Plus size={14} />
+              连接我的数据
+            </button>
+            <button
+              className="sd-button sd-quiet"
+              type="button"
+              onClick={onDemo}
+              disabled={pending}
+            >
+              <FlaskConical size={14} />
+              先体验电商示例
+            </button>
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="sd-work-summary">
+            <button type="button" onClick={() => navigate("graph")}>
+              <GitBranch size={17} />
+              <strong>{workspace.assets.length}</strong>
+              <span>数据资产</span>
+              <ArrowUpRight size={13} />
+            </button>
+            <button type="button" onClick={() => navigate("findings")}>
+              <Fingerprint size={17} />
+              <strong>{workspace.findings.length}</strong>
+              <span>当前发现</span>
+              <ArrowUpRight size={13} />
+            </button>
+            <button type="button" onClick={() => navigate("tasks")}>
+              <ListChecks size={17} />
+              <strong>{currentTasks.length}</strong>
+              <span>本轮待办</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
+          {workspace.sources.every(
+            (source) => source.provenance === "DEMO",
+          ) && (
+            <p className="sd-demo-notice">
+              <FlaskConical size={13} />
+              当前为合成演示，结果不代表企业真实数据。
+            </p>
+          )}
+          <div className="sd-work-columns">
+            <section className="sd-work-section">
+              <header>
+                <h2>优先关注</h2>
                 <button
-                  className="sd-button sd-primary"
                   type="button"
-                  onClick={onConnect}
-                >
-                  <Plus size={15} />
-                  连接我的数据
-                </button>
-                <button
                   className="sd-text-button"
-                  type="button"
-                  disabled={pending}
-                  onClick={onDemo}
-                >
-                  {pending ? (
-                    <LoaderCircle size={14} className="sd-spinning" />
-                  ) : (
-                    <FlaskConical size={14} />
-                  )}
-                  先体验电商示例
-                  <ArrowUpRight size={13} />
-                </button>
-              </div>
-              <div className="sd-connection-methods">
-                <span>
-                  <FileJson size={16} />
-                  JSON 文件
-                </span>
-                <span>
-                  <Globe2 size={16} />
-                  业务 API
-                </span>
-                <span>
-                  <Database size={16} />
-                  PostgreSQL
-                </span>
-              </div>
-            </section>
-          ) : (
-            <section className="sd-overview-findings">
-              <div className="sd-section-title">
-                <div>
-                  <span className="sd-section-number">01 — 关注</span>
-                  <h2>值得先看一眼</h2>
-                </div>
-                <button
-                  className="sd-text-button"
-                  type="button"
                   onClick={() => navigate("findings")}
                 >
                   全部发现
-                  <ArrowUpRight size={14} />
+                  <ArrowRight size={13} />
                 </button>
-              </div>
+              </header>
               {priorityFindings.length ? (
                 <FindingRows
-                  findings={priorityFindings.slice(0, 4)}
+                  findings={priorityFindings.slice(0, 5)}
                   workspace={workspace}
                   onSelect={onFinding}
                 />
               ) : (
-                <Empty
-                  icon={Fingerprint}
-                  title={
-                    workspace.businessBrief
-                      ? "本轮暂无可安排的有效发现"
-                      : "当前规则未发现异常"
-                  }
-                  body={
-                    workspace.businessBrief
-                      ? "请结合目标、来源范围与最新盘点理解结果；全部发现和历史任务仍可查看。"
-                      : "这只覆盖已配置的规则和读取范围，不代表所有业务问题均已排除。"
-                  }
-                />
+                <p className="sd-work-empty">
+                  本轮暂无可安排的有效发现。请结合来源范围与最新盘点理解结果。
+                </p>
               )}
             </section>
-          )}
-        </div>
-        <aside className="sd-overview-aside">
-          <section className="sd-team-preview">
-            <div className="sd-section-title">
-              <span className="sd-overline">你的服务团队</span>
-              <UsersRound size={16} />
+            <div className="sd-work-context">
+              <section className="sd-work-section">
+                <header>
+                  <h2>本轮目标</h2>
+                  <button
+                    type="button"
+                    className="sd-text-button"
+                    onClick={() => navigate("business")}
+                  >
+                    目标与范围
+                    <ArrowRight size={13} />
+                  </button>
+                </header>
+                {goals.length ? (
+                  <div className="sd-work-goals">
+                    {goals.slice(0, 3).map((goal) => (
+                      <div key={goal.id}>
+                        <div>
+                          <strong>{goal.title}</strong>
+                          <span>
+                            {
+                              {
+                                HIGH: "高优先级",
+                                MEDIUM: "常规",
+                                LOW: "后续关注",
+                              }[goal.priority]
+                            }
+                          </span>
+                        </div>
+                        <p>{goal.expectedOutcome}</p>
+                        <small>
+                          {goal.sourceIds.length
+                            ? `${goal.sourceIds.length} 个指定来源`
+                            : `跟随本轮 ${workspace.businessBrief?.includedSourceIds.length ?? 0} 个来源`}{" "}
+                          · 完成情况尚需验证
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="sd-work-empty">
+                    尚未登记目标。先约定本轮范围与期望结果，再安排检查。
+                  </p>
+                )}
+              </section>
+              <section className="sd-work-section sd-handoff-section">
+                <header>
+                  <h2>团队交接</h2>
+                  <button
+                    type="button"
+                    className="sd-text-button"
+                    onClick={() => navigate("tasks")}
+                  >
+                    打开任务
+                    <ArrowRight size={13} />
+                  </button>
+                </header>
+                <dl className="sd-handoff-ledger">
+                  {[
+                    {
+                      label: "等待接手",
+                      count: currentTasks.filter((task) =>
+                        ["PROPOSED", "REOPENED"].includes(task.status),
+                      ).length,
+                      note: "需要安排负责人",
+                    },
+                    {
+                      label: "正在处理",
+                      count: currentTasks.filter(
+                        (task) => task.status === "ACCEPTED",
+                      ).length,
+                      note: "负责人推进中",
+                    },
+                    {
+                      label: "等待复核",
+                      count: currentTasks.filter(
+                        (task) => task.status === "COMPLETED",
+                      ).length,
+                      note: "需要另一人核对新证据",
+                    },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <dt>{item.label}</dt>
+                      <dd>
+                        {item.count}
+                        <small>{item.note}</small>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="sd-handoff-note">
+                  只统计本轮任务。历史工作仍可从任务页查看，提交处理不等于核验通过。
+                </p>
+              </section>
             </div>
-            {Object.entries(ROLE).map(([role, config], index) => {
-              const assistant = workspace.assistants.find(
-                (item) => item.role === role,
-              );
-              return (
-                <button
-                  type="button"
-                  className="sd-team-preview-row"
-                  key={role}
-                  onClick={() => navigate("team")}
-                >
-                  <span className={`sd-assistant-mark sd-mark-${config.color}`}>
-                    <config.icon size={18} strokeWidth={1.5} />
-                  </span>
-                  <span>
-                    <strong>{config.label}</strong>
-                    <small>
-                      {assistant
-                        ? `${assistant.taskIds.length} 项任务 · ${assistantMethod(workspace.capabilities.assistantMethod ?? assistant.method)}`
-                        : [
-                            "系统可用性与更新",
-                            "数据质量与指标",
-                            "影响判断与下一步",
-                          ][index]}
-                    </small>
-                  </span>
-                  <ChevronRight size={13} />
-                </button>
-              );
-            })}
-            <p>
-              {workspace.assistants.length
-                ? "共享证据，各司其职。你始终可以查看依据并接手。"
-                : "数据盘点后，可按实际发现创建团队与任务。"}
-            </p>
-            <button
-              className="sd-button sd-secondary"
-              type="button"
-              onClick={() => navigate("team")}
-            >
-              {workspace.assistants.length ? "打开团队工作室" : "了解团队分工"}
-              <ArrowRight size={14} />
-            </button>
+          </div>
+          <section className="sd-work-section sd-recent-section">
+            <header>
+              <h2>最近记录</h2>
+              <span className="sd-muted">工作区 v{workspace.stateVersion}</span>
+            </header>
+            {workspace.audit.length ? (
+              workspace.audit
+                .slice(-5)
+                .reverse()
+                .map((event, index) => (
+                  <div className="sd-activity-row" key={event.id ?? index}>
+                    <i />
+                    <span title={event.event}>{auditLabel(event.event)}</span>
+                    <small>{event.actorId}</small>
+                    <time>{time(event.occurredAt ?? event.createdAt)}</time>
+                  </div>
+                ))
+            ) : (
+              <p className="sd-work-empty">暂无操作记录。</p>
+            )}
           </section>
-          <section className="sd-trust-note">
-            <ShieldCheck size={19} strokeWidth={1.3} />
-            <h3>有边界，才有信任。</h3>
-            <p>
-              来源默认只读。每项诊断保留规则与证据；助手建议不能直接修改业务系统。
-            </p>
-            <button
-              className="sd-text-button"
-              type="button"
-              onClick={() => navigate("settings")}
-            >
-              查看空间约定
-              <ArrowUpRight size={12} />
-            </button>
-          </section>
-        </aside>
-      </div>
-      <section className="sd-progress-section">
-        <div className="sd-section-title">
-          <div>
-            <span className="sd-section-number">02 — 进展</span>
-            <h2>协作正在发生</h2>
-          </div>
-          <span className="sd-muted">
-            {complete} 项已核验 · {workspace.tasks.length} 项任务
-          </span>
-        </div>
-        {workspace.tasks.length ? (
-          <div className="sd-compact-tasks">
-            {workspace.tasks.slice(0, 3).map((task) => (
-              <button type="button" key={task.id} onClick={() => onTask(task)}>
-                <span className="sd-task-checkbox">
-                  {task.status === "VERIFIED" ? (
-                    <CheckCheck size={16} />
-                  ) : (
-                    <span />
-                  )}
-                </span>
-                <span>
-                  <strong>{task.title}</strong>
-                  <small>
-                    {workspace.assistants.find(
-                      (item) => item.id === task.assistantId,
-                    )?.name ?? "待分工"}{" "}
-                    · 更新于 {time(task.updatedAt)}
-                  </small>
-                </span>
-                <State value={task.status} />
-                <ArrowUpRight size={14} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="sd-quiet-empty">
-            <ListChecks size={18} />
-            <span>
-              暂时还没有协作任务。完成盘点后，让团队把发现变成具体的下一步。
-            </span>
-            <button
-              type="button"
-              className="sd-text-button"
-              onClick={() => navigate("team")}
-            >
-              前往服务团队
-              <ArrowRight size={13} />
-            </button>
-          </div>
-        )}
-      </section>
+        </>
+      )}
     </>
   );
 }
@@ -1534,7 +1602,7 @@ function Sources({
     <>
       <PageTitle
         eyebrow="连接 / CONNECTIONS"
-        title="让数据，有来处"
+        title="数据连接"
         description="只读取你授权的来源。凭证保留在服务端，盘点过程和读取范围都可查看。"
       >
         {workspace.sources.length > 0 &&
@@ -1725,7 +1793,7 @@ function Assets({
     <>
       <PageTitle
         eyebrow="目录 / DATA CATALOG"
-        title="看见业务的脉络"
+        title="数据资产"
         description="这是一份从实际读取结果生成的数据目录。打开资产，可以查看字段、质量和观测范围。"
       >
         <button
@@ -1865,7 +1933,7 @@ function Findings({
     <>
       <PageTitle
         eyebrow="诊断 / DIAGNOSTICS"
-        title="先弄清楚，再往前走"
+        title="诊断发现"
         description="检查发现是需要核实的线索。每一项都附有实际观测、判断规则与下一步建议。"
       >
         <button
@@ -1959,7 +2027,7 @@ function Team({
     <>
       <PageTitle
         eyebrow="协作 / YOUR SERVICE TEAM"
-        title="各有所长，一起向前"
+        title="服务团队"
         description="运维关注稳定，分析核对数据，决策梳理行动。共享同一份依据，让分工真正接上业务。"
       >
         <button
@@ -2290,7 +2358,7 @@ function Tasks({
     <>
       <PageTitle
         eyebrow="行动 / COLLABORATION"
-        title="把发现，变成下一步"
+        title="协作任务"
         description="接手、讨论、处理和复核，都围绕同一项任务展开。完成处理后，再检查来源是否真的改善。"
       >
         <button
@@ -2388,7 +2456,7 @@ function Settings({
     <>
       <PageTitle
         eyebrow="偏好 / SPACE SETTINGS"
-        title="让这里，适合你的工作"
+        title="空间设置"
         description="调整阅读氛围，了解工作空间的数据边界与当前能力。"
       />
       <section className="sd-settings-section">
@@ -2399,19 +2467,24 @@ function Settings({
         <div className="sd-theme-picker">
           {[
             {
-              id: "linen",
-              title: "亚麻 · 朱砂",
-              caption: "温暖的纸面与一抹朱砂",
+              id: "mineral",
+              title: "矿白 · 普鲁士蓝",
+              caption: "明净的矿物白与深蓝工作面",
             },
             {
               id: "titanium",
-              title: "钛灰 · 古铜",
-              caption: "安静的暗色工作环境",
+              title: "石墨 · 钛银",
+              caption: "低亮度、清晰克制的深色环境",
             },
             {
               id: "muse",
-              title: "月白 · 水碧",
-              caption: "轻盈、清晰、带一点活力",
+              title: "水碧 · 月白",
+              caption: "青绿点缀的明亮工作环境",
+            },
+            {
+              id: "cinnabar",
+              title: "朱砂 · 素纸",
+              caption: "灰纸白、矿物朱红与极少赭金",
             },
           ].map((item) => (
             <button
@@ -2455,7 +2528,7 @@ function Settings({
         <dl className="sd-capability-list">
           <div>
             <dt>保存方式</dt>
-            <dd>本地文件持久保存 · 工作区 v{workspace.stateVersion}</dd>
+            <dd>服务端文件保存 · 工作区 v{workspace.stateVersion}</dd>
           </div>
           <div>
             <dt>来源访问</dt>
@@ -2926,6 +2999,7 @@ function SearchDialog({
           <Search size={18} />
           <input
             autoFocus
+            data-autofocus
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -2940,6 +3014,7 @@ function SearchDialog({
               results[active] ? `result-${results[active].id}` : undefined
             }
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActive((value) => Math.min(value + 1, results.length - 1));
@@ -3048,11 +3123,15 @@ function Guide({
           </motion.div>
         </AnimatePresence>
         <footer>
-          <span>{step + 1} / {steps.length}</span>
+          <span>
+            {step + 1} / {steps.length}
+          </span>
           <button
             className="sd-button sd-primary"
             type="button"
-            onClick={() => (step < steps.length - 1 ? setStep(step + 1) : onConnect())}
+            onClick={() =>
+              step < steps.length - 1 ? setStep(step + 1) : onConnect()
+            }
           >
             {step < steps.length - 1 ? "下一步" : "连接我的数据"}
             <ArrowRight size={14} />

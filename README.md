@@ -6,20 +6,22 @@ SmartData 把连接来源、盘点资产、保留证据、诊断问题、协作�
 
 项目背景、重要设计、历史进展和下一步验收统一记录在 **[项目总纲](PROJECT_CHARTER.md)**。它用业务语言解释工作，必要术语附说明；详细目标见[优化路线图](docs/roadmap.md)。
 
-![SmartData 本机工作空间，图中为合成电商演示](docs/images/workspace-overview.png)
+![SmartData 岛屿工作面与真实接口返回的合成演示血缘](docs/images/workspace-islands.png)
 
-图中为实际运行的合成演示，不代表客户数据。[钛灰主题](docs/images/workspace-titanium.png) · [手机协作界面](docs/images/workspace-team-mobile.png)
+图中为实际运行的合成演示；实体与指标仍是未生成的定义，不代表客户经营结果。
+[石墨主题](docs/images/workspace-islands-titanium.png) · [朱砂主题](docs/images/workspace-islands-cinnabar.png) · [手机画布](docs/images/workspace-islands-mobile.png) · [首次进入](docs/images/lineage-empty.png)
 
 ## 现在可以做什么
 
 - 连接 JSON 样本、业务 JSON API 和 PostgreSQL 的只读来源。
 - 保存版本化业务目标、工作范围和指标定义；按目标安排助手，定义由负责人确认，变更后重新审核。
 - 盘点数据资产和字段，检查缺失、重复、类型与更新时间，查看实际观测和样本边界。
+- 在四层数据图谱中查看来源，登记实体、指标和决策的输入关系；观察、声明、计划分别标注，未生成的结果不会假装已完成。
 - 组织运维、分析和决策三类规则助手，按发现分工、引用证据、讨论、接手和复核任务。
 - 可选接入私有服务、火山方舟或百炼的兼容模型接口，保留证据引用、未知项、模型版本和失败记录；具体供应商仍需使用自己的授权实测。
 - 在本地保存工作记录，重启继续，导出有依据的报告；演示与用户数据明确分开。
 - 用订单履约样板检验“建议 → 策略 → 人工审批 → 防重复执行 → 外部回执 → 独立回读”。
-- 选择亚麻朱砂、钛灰古铜、月白水碧主题，使用键盘搜索、数据检查浮层和手机工作台。
+- 使用紧凑岛屿布局、真实背景折射、四套艺术配色、键盘搜索和触屏画布；可显式展开来源结构与字段。
 
 ## 本机启动
 
@@ -68,7 +70,7 @@ npm run build
 # mcp-bridge 目录：go vet ./...，go test -race ./...
 ```
 
-首轮工作区成果见[工作区交付](docs/reports/2026-10-25-workspace-delivery.md)，后续目标、范围与可靠存储改造见[本轮阶段报告](docs/reports/2026-10-25-business-postgresql-delivery.md)；履约样板的历史见[实施状态](docs/implementation-status.md)。
+最新界面、数据血缘与节点实验见[本轮阶段报告](docs/reports/2026-10-25-lineage-workbench-delivery.md)。此前的[工作区交付](docs/reports/2026-10-25-workspace-delivery.md)、[业务约定与可靠存储](docs/reports/2026-10-25-business-postgresql-delivery.md)及[履约样板历史](docs/implementation-status.md)分别保留当时的结果与限制。
 
 PostgreSQL 仓储已实现，完整生产装配、消息投递和外部权限适配仍待验收。默认生产模式在缺少必要组件时拒绝启动；生产部署须完成[部署门禁](docs/operations/production-deployment.md)。部署文件不能证明这些能力已接通，也未证明计划中的大规模容量。
 

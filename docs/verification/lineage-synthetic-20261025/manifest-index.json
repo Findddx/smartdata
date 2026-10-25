@@ -1,0 +1,13 @@
+{
+  "createdAt": "2026-10-25T15:44:13.325516+00:00",
+  "manifests": {
+    "assumptions.json": "53c29836574ad53e9769e846290407161591805e0df79460eaf21faf289e91e9",
+    "execution-lineage.json": "7190911d5ba984c6a4fc21f167e4af188453d22b2c27360c5563c594cee36bb8",
+    "independent-validation.json": "2b7b8144d2fc706e0232f059b0b1a9ca09525817c253eaa34f5f99c92e4a8a0b",
+    "input.json": "bdb358ad80fcc3b5febc6cc19d5b8c40169af05477d8e5a968022554102050a1",
+    "limitations.json": "60450cb3addf62ccd8d3660d065adb4dfcc7ecb4e94d298f21e4d3c2fb5ab653",
+    "method.json": "1986b855e80797b3525601b9b00a3f9cf192ed65d948638f72c06228ae93b27a",
+    "output.json": "51f9f1f98157f5b73b8a9f73d63bbbfa7ed705042515be738afe06e38b20139e"
+  },
+  "version": 1
+}

@@ -4,6 +4,7 @@ import io.smartdata.foundation.domain.Actor
 import io.smartdata.foundation.runtime.api.CommandIdempotencyGate
 import io.smartdata.foundation.runtime.api.commandFingerprint
 import io.smartdata.foundation.runtime.security.ActorContextResolver
+import io.smartdata.foundation.runtime.workspace.lineage.SaveLineageMappingsCommand
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.constraints.Size
 import org.springframework.beans.factory.annotation.Value
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.nio.file.Path
 import java.time.Clock
@@ -77,6 +79,23 @@ class WorkspaceController(
 
     @GetMapping("/business-brief/history")
     fun businessBriefHistory(request: HttpServletRequest) = service.businessBriefHistory(actors.resolve(request))
+
+    @GetMapping("/lineage")
+    fun lineage(request: HttpServletRequest) = service.lineage(actors.resolve(request))
+
+    @GetMapping("/lineage/sources/{sourceId}/assets/{assetId}/fields")
+    fun lineageFields(request: HttpServletRequest, @PathVariable sourceId: String, @PathVariable assetId: String,
+        @RequestParam(defaultValue = "0") offset: Int, @RequestParam(defaultValue = "128") limit: Int) =
+        service.lineageFields(actors.resolve(request), sourceId, assetId, offset, limit)
+
+    @GetMapping("/lineage/mappings")
+    fun lineageMappings(request: HttpServletRequest) = service.lineageMappings(actors.resolve(request))
+
+    @PostMapping("/lineage/mappings")
+    fun saveLineageMappings(request: HttpServletRequest,
+        @RequestHeader("Idempotency-Key") @Size(min = 8, max = 128) key: String,
+        @RequestBody body: SaveLineageMappingsCommand) =
+        command(request, key, "lineage-mappings.save", body) { actor -> service.saveLineageMappings(actor, key, body) }
 
     @PostMapping("/business-brief")
     fun businessBrief(request: HttpServletRequest,

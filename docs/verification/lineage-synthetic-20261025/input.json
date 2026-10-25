@@ -1,0 +1,17 @@
+{
+  "customers": 10000,
+  "files": [
+    {
+      "path": "inputs/customers.csv",
+      "sha256": "cf1c400545f8bafe787a4a5157398f6b57faff4b6a8309deb2b9b44b29b2ce76"
+    },
+    {
+      "path": "inputs/orders.csv",
+      "sha256": "3be9c2e4bd6deb1bf7476cbad56adab3a9ba736a2304a7c67b6680182e29e641"
+    }
+  ],
+  "orders": 250000,
+  "provenance": "DEMO",
+  "realCustomerDataUsed": false,
+  "seed": 20261025
+}

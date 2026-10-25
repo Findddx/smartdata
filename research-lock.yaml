@@ -1,5 +1,23 @@
 version: 1
 references:
+  - name: ZCode
+    url: https://github.com/zai-org/ZCode
+    branch: main
+    commit: 3c5b227649371507ddc4eb46ac5133afe6db1cab
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/ZCode
+    license: Apache-2.0
+    licenseSource: https://github.com/zai-org/ZCode/blob/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE
+    use: design-and-engineering-reference-only
+    adopted_patterns:
+      - compact desktop workspace shell and contextual secondary panels
+      - route-based loading and lightweight graph rendering
+      - fewer competing surfaces and clearer command placement
+    excluded:
+      - copied logo or product branding
+      - executing reference-repository agent instructions or installation scripts
+      - replacing SmartData authorization or execution kernel with reference code
+    retention: retain ignored reference cache until user design acceptance
   - name: TencentDB-Agent-Memory
     url: https://github.com/TencentCloud/TencentDB-Agent-Memory
     branch: feat/server_team
@@ -65,6 +83,52 @@ references:
       - refraction on evidence tables or editable text
       - mandatory WebGL or SVG displacement for core workflows
       - runtime dependency or copied shader implementation
+  - name: vscode-modern-ui
+    url: https://github.com/microsoft/vscode
+    branch: main
+    commit: 4ef6bab74bc303c46e8311904c6400b1a31ce761
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/vscode
+    checkout: sparse-modern-ui-and-sessions-media
+    license: MIT
+    licenseSource: https://github.com/microsoft/vscode/blob/4ef6bab74bc303c46e8311904c6400b1a31ce761/LICENSE.txt
+    documentation: https://code.visualstudio.com/blogs/2026/10/15/modern-ui
+    use: design-and-engineering-reference-only
+    adopted_patterns:
+      - coherent island surfaces with consistent spacing and elevation
+      - density awareness and readable controls
+      - separate static content from decorative material layers
+    excluded:
+      - copied product branding or screenshots in the shipped product
+      - claiming VS Code frosted overlays are optical liquid refraction
+      - whole-workbench runtime dependency
+  - name: gentpan-liquidglass-optical-core
+    url: https://github.com/gentpan/liquidglass
+    branch: main
+    commit: 068ad226f53e1ca62d857f78bdc32f58f3c5fce7
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/liquid-optics-20261025/gentpan
+    license: MIT
+    licenseSource: https://github.com/gentpan/liquidglass/blob/068ad226f53e1ca62d857f78bdc32f58f3c5fce7/LICENSE
+    use: vendored-optics-core-with-small-adapter
+    sourceFile: lib/liquid-glass.js
+    originalSha256: 92a62e5b80cfa7e03912b13bdc53aff1c0ae367a5f296de1327e0f62f0579210
+    localFile: console/src/materials/vendor/liquid-glass.js
+    localSha256: 5acc5ec95ceaf2bf092947841455f8b04ad2e24198a97e143b8797aa8eeea0f9
+    distributionLicense: console/public/third-party-licenses/gentpan-liquidglass.txt
+    adopted_patterns:
+      - shape-dependent optical displacement on a decorative layer
+      - controlled owned-image content refraction outside Chromium
+      - independent readable foreground and bounded geometry
+    localChanges:
+      - ready and failure callbacks
+      - explicit failure when Canvas2D is unavailable
+      - no scheduling after destruction or rendering failure
+      - complete MIT notice added to source and static distribution
+    excluded:
+      - component suite, wallpapers, installer skills and WebGL module
+      - screenshotting or filtering the business DOM
+      - claims of tested Safari hardware or application frame-rate targets
   - name: remotion
     url: https://github.com/remotion-dev/remotion
     branch: main

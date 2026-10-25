@@ -1,0 +1,84 @@
+{
+  "events": [
+    {
+      "eventType": "COMPLETE",
+      "inputs": [
+        {
+          "name": "raw_customers",
+          "namespace": "smartdata.synthetic"
+        },
+        {
+          "name": "raw_orders",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "job": {
+        "name": "customer_entities",
+        "namespace": "smartdata.synthetic"
+      },
+      "outputs": [
+        {
+          "name": "customer_entities",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "producer": "smartdata-synthetic-lineage-v1",
+      "provenance": "DEMO",
+      "run": {
+        "runId": "synthetic-lineage-seed-20261025-customer_entities"
+      },
+      "sqlSha256": "c1fbc5cd1825f8efdd3d247037dfb710ba19162a98452994297a219d79dbf8ab"
+    },
+    {
+      "eventType": "COMPLETE",
+      "inputs": [
+        {
+          "name": "raw_orders",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "job": {
+        "name": "daily_metrics",
+        "namespace": "smartdata.synthetic"
+      },
+      "outputs": [
+        {
+          "name": "daily_metrics",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "producer": "smartdata-synthetic-lineage-v1",
+      "provenance": "DEMO",
+      "run": {
+        "runId": "synthetic-lineage-seed-20261025-daily_metrics"
+      },
+      "sqlSha256": "7188c8f9493ece76ec1fc0f99431107cea3de98ffa6004d92e351d40ff890245"
+    },
+    {
+      "eventType": "COMPLETE",
+      "inputs": [
+        {
+          "name": "daily_metrics",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "job": {
+        "name": "decision_candidates",
+        "namespace": "smartdata.synthetic"
+      },
+      "outputs": [
+        {
+          "name": "decision_candidates",
+          "namespace": "smartdata.synthetic"
+        }
+      ],
+      "producer": "smartdata-synthetic-lineage-v1",
+      "provenance": "DEMO",
+      "run": {
+        "runId": "synthetic-lineage-seed-20261025-decision_candidates"
+      },
+      "sqlSha256": "380b03536227d30e5e61aa6b5be8f9bc4a78f87db8c7c9133f5c880a8e70f096"
+    }
+  ],
+  "provenance": "DEMO"
+}

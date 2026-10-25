@@ -11,7 +11,7 @@ async (page) => {
     await page.evaluate(async () => {await document.fonts.ready; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));});
   };
   await page.setViewportSize({width:1440,height:1000});
-  const themes = [['钛灰 · 古铜','titanium'],['月白 · 水碧','muse'],['亚麻 · 朱砂','linen']];
+  const themes = [['石墨 · 钛银','titanium'],['水碧 · 月白','muse'],['矿白 · 普鲁士蓝','linen']];
   for (const [label,id] of themes) {
     await page.goto(origin + '/#/settings');
     await page.getByRole('button',{name:new RegExp(label)}).click();

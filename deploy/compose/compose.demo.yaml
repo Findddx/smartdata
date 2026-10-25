@@ -14,7 +14,11 @@ x-service-hardening: &service-hardening
 services:
   postgres:
     <<: *service-hardening
-    image: postgres:18.4-alpine3.22
+    image: localhost/smartdata-postgres:18.6-alpine3.24-r1
+    pull_policy: build
+    build:
+      context: ../docker
+      dockerfile: postgres.Dockerfile
     environment:
       POSTGRES_DB: smartdata
       POSTGRES_USER: smartdata_demo

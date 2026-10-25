@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-25",
+  "method": "Actual screenshots of a controlled 640x360 scene; compare strength 1 and 16 while keeping all text, tint, size and geometry fixed. Edge mask: inset 4..31px; center: inset>55px; changed RGB sum threshold 14. This is a small optical fixture, not a production frame-rate or physical-device test.",
+  "sourceFixture": "console/src/brand/material-inspection.tsx",
+  "runner": "console/e2e/material-optics.browser.js",
+  "platform": "Windows",
+  "results": [
+    {
+      "result": "PASS_BROWSER_REFRACTION_PIXELS",
+      "browser": "chromium",
+      "browserVersion": "155.0.8059.85",
+      "mode": "svg-backdrop",
+      "strengths": [
+        1,
+        16
+      ],
+      "zeroStrengthSolid": true,
+      "foregroundUnmovedAndUnfiltered": true,
+      "pixels": {
+        "width": 640,
+        "height": 360,
+        "rim": 24336,
+        "rimChanged": 4516,
+        "rimFraction": 0.18556870479947404,
+        "center": 10803,
+        "centerChanged": 0,
+        "centerFraction": 0
+      },
+      "limitation": "Small fixture on Windows; not Safari/iPhone hardware or application frame-rate certification."
+    },
+    {
+      "result": "PASS_BROWSER_REFRACTION_PIXELS",
+      "browser": "firefox",
+      "browserVersion": "156.0",
+      "mode": "art-refraction",
+      "strengths": [
+        1,
+        16
+      ],
+      "zeroStrengthSolid": true,
+      "foregroundUnmovedAndUnfiltered": true,
+      "pixels": {
+        "width": 640,
+        "height": 360,
+        "rim": 24336,
+        "rimChanged": 1450,
+        "rimFraction": 0.05958251150558843,
+        "center": 10803,
+        "centerChanged": 0,
+        "centerFraction": 0
+      },
+      "limitation": "Small fixture on Windows; not Safari/iPhone hardware or application frame-rate certification."
+    },
+    {
+      "result": "PASS_BROWSER_REFRACTION_PIXELS",
+      "browser": "webkit",
+      "browserVersion": "26.6",
+      "mode": "art-refraction",
+      "strengths": [
+        1,
+        16
+      ],
+      "zeroStrengthSolid": true,
+      "foregroundUnmovedAndUnfiltered": true,
+      "pixels": {
+        "width": 640,
+        "height": 360,
+        "rim": 24336,
+        "rimChanged": 1848,
+        "rimFraction": 0.07593688362919132,
+        "center": 10803,
+        "centerChanged": 0,
+        "centerFraction": 0
+      },
+      "limitation": "Small fixture on Windows; not Safari/iPhone hardware or application frame-rate certification."
+    }
+  ]
+}

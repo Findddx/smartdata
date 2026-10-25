@@ -1,0 +1,9 @@
+{
+  "experiment": "SYNTHETIC_RELATIONAL_LINEAGE_V1",
+  "authorization": "User-authorized dedicated GPU host; private connection details are not published",
+  "resourceBudget": {"cpuCores": 2, "cpuAffinity": [30, 31], "nice": 15, "memoryTargetBytes": 2147483648, "dockerContainers": 0, "gpuAccelerationUsed": false},
+  "observedPeakRssKiB": 58128,
+  "coordination": {"existingInferenceJobUntouched": true, "parallelImageHardeningBudget": {"cpuCores": 2, "memoryBytes": 4294967296}, "sharedProcessesStopped": false, "sudoUsed": false},
+  "storage": {"rawInputsRemainOnAuthorizedHost": true, "privateDirectoryMode": "0700", "rawFileMode": "0600", "rawDataDownloaded": false, "userWorkspaceImported": false},
+  "scope": "Synthetic experiment evidence only; not a GPU acceleration benchmark or enterprise capacity test"
+}

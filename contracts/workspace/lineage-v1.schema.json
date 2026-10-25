@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartdata.dev/contracts/workspace/lineage-v1.schema.json",
+  "title": "Workspace lineage graph v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["stateVersion", "mappingVersion", "generatedAt", "scope", "nodes", "edges", "notices", "coverage"],
+  "properties": {
+    "stateVersion": {"type": "integer", "minimum": 0}, "mappingVersion": {"type": "integer", "minimum": 0},
+    "generatedAt": {"type": "string", "format": "date-time"}, "scope": {"$ref": "#/$defs/Scope"},
+    "nodes": {"type": "array", "maxItems": 3000, "items": {"$ref": "#/$defs/Node"}},
+    "edges": {"type": "array", "maxItems": 6000, "items": {"$ref": "#/$defs/Edge"}},
+    "notices": {"type": "array", "items": {"type": "string"}}, "coverage": {"$ref": "#/$defs/Coverage"}
+  },
+  "$defs": {
+    "DefinitionId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+    "PhysicalFieldRef": {"type": "object", "additionalProperties": false, "required": ["sourceId", "assetId", "fieldName"], "properties": {
+      "sourceId": {"type": "string", "minLength": 1}, "assetId": {"type": "string", "minLength": 1}, "fieldName": {"type": "string", "minLength": 1}}},
+    "EntityMapping": {"type": "object", "additionalProperties": false, "required": ["id", "name", "entityType", "inputFields", "transformationDescription"], "properties": {
+      "id": {"$ref": "#/$defs/DefinitionId"}, "name": {"type": "string", "minLength": 1, "maxLength": 100}, "entityType": {"type": "string", "minLength": 1, "maxLength": 80},
+      "inputFields": {"type": "array", "minItems": 1, "maxItems": 100, "uniqueItems": true, "items": {"$ref": "#/$defs/PhysicalFieldRef"}}, "transformationDescription": {"type": "string", "minLength": 1, "maxLength": 2000}}},
+    "MetricMapping": {"type": "object", "additionalProperties": false, "required": ["metricId", "definitionVersion", "transformationDescription"], "properties": {
+      "metricId": {"$ref": "#/$defs/DefinitionId"}, "definitionVersion": {"type": "integer", "minimum": 1},
+      "inputEntityIds": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/DefinitionId"}},
+      "inputFields": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"$ref": "#/$defs/PhysicalFieldRef"}}, "transformationDescription": {"type": "string", "minLength": 1, "maxLength": 2000}},
+      "anyOf": [
+        {"required": ["inputFields"], "properties": {"inputFields": {"type": "array", "minItems": 1}}},
+        {"required": ["inputEntityIds"], "properties": {"inputEntityIds": {"type": "array", "minItems": 1}}}
+      ]},
+    "DecisionMapping": {"type": "object", "additionalProperties": false, "required": ["goalId", "inputMetricIds", "decisionQuestion"], "properties": {
+      "goalId": {"$ref": "#/$defs/DefinitionId"}, "inputMetricIds": {"type": "array", "minItems": 1, "maxItems": 40, "uniqueItems": true, "items": {"$ref": "#/$defs/DefinitionId"}}, "decisionQuestion": {"type": "string", "minLength": 1, "maxLength": 1000}}},
+    "Mappings": {"type": "object", "additionalProperties": false, "required": ["version", "entities", "metrics", "decisions"], "properties": {
+      "version": {"type": "integer", "minimum": 0}, "entities": {"type": "array", "maxItems": 50, "items": {"$ref": "#/$defs/EntityMapping"}}, "metrics": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/MetricMapping"}}, "decisions": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/DecisionMapping"}},
+      "updatedBy": {"type": ["string", "null"]}, "updatedAt": {"type": ["string", "null"], "format": "date-time"}}},
+    "SaveMappingsCommand": {"type": "object", "additionalProperties": false, "required": ["expectedStateVersion", "expectedMappingVersion"], "properties": {
+      "expectedStateVersion": {"type": "integer", "minimum": 0}, "expectedMappingVersion": {"type": "integer", "minimum": 0},
+      "entities": {"type": "array", "maxItems": 50, "items": {"$ref": "#/$defs/EntityMapping"}}, "metrics": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/MetricMapping"}}, "decisions": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/DecisionMapping"}}}},
+    "Coverage": {"type": "object", "additionalProperties": false,
+      "required": ["partial", "totalSources", "shownSources", "totalTables", "shownTables", "totalFields", "shownFields", "omittedDerivedDefinitions", "nodeLimit", "edgeLimit", "fieldLimit"],
+      "properties": {"partial": {"type": "boolean"}, "totalSources": {"type": "integer", "minimum": 0}, "shownSources": {"type": "integer", "minimum": 0},
+        "totalTables": {"type": "integer", "minimum": 0}, "shownTables": {"type": "integer", "minimum": 0}, "totalFields": {"type": "integer", "minimum": 0}, "shownFields": {"type": "integer", "minimum": 0, "maximum": 256},
+        "omittedDerivedDefinitions": {"type": "integer", "minimum": 0}, "nodeLimit": {"const": 3000}, "edgeLimit": {"const": 6000}, "fieldLimit": {"const": 256}}
+    },
+    "FieldPage": {"type": "object", "additionalProperties": false,
+      "required": ["stateVersion", "sourceId", "assetId", "totalFields", "offset", "limit", "nodes", "edges", "hasMore"],
+      "properties": {"stateVersion": {"type": "integer", "minimum": 0}, "sourceId": {"type": "string"}, "assetId": {"type": "string"}, "totalFields": {"type": "integer", "minimum": 0},
+        "offset": {"type": "integer", "minimum": 0, "maximum": 100000}, "limit": {"type": "integer", "minimum": 1, "maximum": 128},
+        "nodes": {"type": "array", "maxItems": 128, "items": {"allOf": [{"$ref": "#/$defs/Node"}, {"type": "object", "properties": {"kind": {"const": "FIELD"}}}]}}, "edges": {"type": "array", "maxItems": 128, "items": {"allOf": [{"$ref": "#/$defs/Edge"}, {"type": "object", "properties": {"kind": {"const": "CONTAINS"}, "evidenceNature": {"const": "OBSERVED"}}}]}}, "hasMore": {"type": "boolean"}}
+    },
+    "Scope": {"type": "object", "additionalProperties": false, "required": ["briefVersion", "sourceIds", "excludedAuthorizedSourceCount"], "properties": {
+      "briefVersion": {"type": ["integer", "null"], "minimum": 1}, "sourceIds": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "excludedAuthorizedSourceCount": {"type": "integer", "minimum": 0}
+    }},
+    "Ref": {"type": "object", "additionalProperties": false, "required": ["type", "id"], "properties": {
+      "type": {"enum": ["SOURCE", "ASSET", "FIELD", "ENTITY_DEFINITION", "METRIC_DEFINITION", "BUSINESS_GOAL"]}, "id": {"type": "string"},
+      "sourceId": {"type": ["string", "null"]}, "assetId": {"type": ["string", "null"]}, "fieldName": {"type": ["string", "null"]}, "definitionVersion": {"type": ["integer", "null"], "minimum": 1}
+    }},
+    "EvidenceRef": {"type": "object", "additionalProperties": false, "required": ["sourceId", "assetId", "scanId", "sha256", "observedAt"], "properties": {
+      "sourceId": {"type": "string"}, "assetId": {"type": "string"}, "scanId": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "observedAt": {"type": "string", "format": "date-time"}
+    }},
+    "Node": {"type": "object", "additionalProperties": false,
+      "required": ["id", "label", "summary", "layer", "kind", "shape", "ref", "evidenceNature", "materialization", "provenance", "sourceIds", "evidenceRefs", "sensitivity", "freshness", "authorization", "scopeStatus", "notices"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^lineage-[a-z]+-[a-f0-9]{24}$"}, "label": {"type": "string"}, "summary": {"type": "string"},
+        "layer": {"enum": ["L0", "L1", "L2", "L3"]}, "kind": {"enum": ["SOURCE", "TABLE", "FIELD", "BUSINESS_ENTITY", "METRIC", "DECISION_PLAN"]},
+        "shape": {"enum": ["DATABASE_CYLINDER", "TABLE_GRID", "FIELD_PILL", "ENTITY_HEXAGON", "METRIC_CIRCLE", "DECISION_DIAMOND"]},
+        "ref": {"$ref": "#/$defs/Ref"}, "evidenceNature": {"enum": ["OBSERVED", "DECLARED", "PLANNED"]},
+        "materialization": {"enum": ["METADATA_ONLY", "NOT_MATERIALIZED"]}, "provenance": {"enum": ["USER", "DEMO"]},
+        "sourceIds": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "evidenceRefs": {"type": "array", "items": {"$ref": "#/$defs/EvidenceRef"}},
+        "observedAt": {"type": ["string", "null"], "format": "date-time"}, "sensitivity": {"enum": ["UNKNOWN", "PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]},
+        "freshness": {"enum": ["CURRENT", "STALE", "UNKNOWN"]}, "authorization": {"const": "METADATA_VISIBLE"}, "scopeStatus": {"const": "IN_SCOPE"}, "notices": {"type": "array", "items": {"type": "string"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "SOURCE"}}}, "then": {"properties": {"layer": {"const": "L0"}, "shape": {"const": "DATABASE_CYLINDER"}, "materialization": {"const": "METADATA_ONLY"}, "evidenceNature": {"enum": ["OBSERVED", "DECLARED"]}, "ref": {"type": "object", "properties": {"type": {"const": "SOURCE"}}}}}},
+        {"if": {"properties": {"kind": {"const": "TABLE"}}}, "then": {"properties": {"layer": {"const": "L0"}, "shape": {"const": "TABLE_GRID"}, "materialization": {"const": "METADATA_ONLY"}, "evidenceNature": {"const": "OBSERVED"}, "ref": {"type": "object", "properties": {"type": {"const": "ASSET"}}}}}},
+        {"if": {"properties": {"kind": {"const": "FIELD"}}}, "then": {"properties": {"layer": {"const": "L0"}, "shape": {"const": "FIELD_PILL"}, "materialization": {"const": "METADATA_ONLY"}, "evidenceNature": {"const": "OBSERVED"}, "ref": {"type": "object", "properties": {"type": {"const": "FIELD"}}}}}},
+        {"if": {"properties": {"kind": {"const": "BUSINESS_ENTITY"}}}, "then": {"properties": {"layer": {"const": "L1"}, "shape": {"const": "ENTITY_HEXAGON"}, "materialization": {"const": "NOT_MATERIALIZED"}, "evidenceNature": {"const": "DECLARED"}, "ref": {"type": "object", "properties": {"type": {"const": "ENTITY_DEFINITION"}}}}}},
+        {"if": {"properties": {"kind": {"const": "METRIC"}}}, "then": {"properties": {"layer": {"const": "L2"}, "shape": {"const": "METRIC_CIRCLE"}, "materialization": {"const": "NOT_MATERIALIZED"}, "evidenceNature": {"const": "DECLARED"}, "ref": {"type": "object", "properties": {"type": {"const": "METRIC_DEFINITION"}}}}}},
+        {"if": {"properties": {"kind": {"const": "DECISION_PLAN"}}}, "then": {"properties": {"layer": {"const": "L3"}, "shape": {"const": "DECISION_DIAMOND"}, "materialization": {"const": "NOT_MATERIALIZED"}, "evidenceNature": {"const": "PLANNED"}, "ref": {"type": "object", "properties": {"type": {"const": "BUSINESS_GOAL"}}}}}}
+      ]
+    },
+    "Edge": {"type": "object", "additionalProperties": false,
+      "required": ["id", "from", "to", "kind", "evidenceNature", "lineStyle", "transformationStatus", "description", "evidenceRefs"],
+      "properties": {
+        "id": {"type": "string"}, "from": {"type": "string"}, "to": {"type": "string"}, "kind": {"enum": ["CONTAINS", "MAPPED_TO", "FEEDS_INTO", "INFORMS"]},
+        "evidenceNature": {"enum": ["OBSERVED", "DECLARED", "PLANNED"]}, "lineStyle": {"enum": ["SOLID", "DASHED", "DOTTED"]},
+        "transformationStatus": {"enum": ["NOT_APPLICABLE", "UNKNOWN", "DECLARED_ONLY"]}, "description": {"type": "string"}, "evidenceRefs": {"type": "array", "items": {"$ref": "#/$defs/EvidenceRef"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"evidenceNature": {"const": "OBSERVED"}}}, "then": {"properties": {"lineStyle": {"const": "SOLID"}, "kind": {"const": "CONTAINS"}, "transformationStatus": {"const": "NOT_APPLICABLE"}}}},
+        {"if": {"properties": {"evidenceNature": {"const": "DECLARED"}}}, "then": {"properties": {"lineStyle": {"const": "DASHED"}}}},
+        {"if": {"properties": {"evidenceNature": {"const": "PLANNED"}}}, "then": {"properties": {"lineStyle": {"const": "DOTTED"}}}}
+      ]
+    }
+  }
+}

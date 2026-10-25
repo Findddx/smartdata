@@ -1,0 +1,9 @@
+{
+  "currency": "CNY",
+  "decisionThreshold": "late_orders/orders > 10%; synthetic assumption, not a validated business policy",
+  "entityIdentity": "exact generated customer_id join; no fuzzy identity or inferred real customer",
+  "lateMeaning": "synthetic binary observation",
+  "moneyUnit": "integer_cent",
+  "netRevenueDefinition": "sum(paid_cents-refund_cents)",
+  "timeZone": "UTC"
+}

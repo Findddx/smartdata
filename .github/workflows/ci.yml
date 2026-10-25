@@ -139,6 +139,22 @@ jobs:
         uses: ./.github/actions/setup-pinned-java
       - name: Require a real Docker engine
         run: docker info
+      - name: Build the pinned PostgreSQL delivery image
+        run: |
+          docker build --file deploy/docker/postgres.Dockerfile \
+            --tag localhost/smartdata-postgres:18.6-alpine3.24-r1 deploy/docker
+          image_id="$(docker image inspect --format '{{.Id}}' localhost/smartdata-postgres:18.6-alpine3.24-r1)"
+          echo "SMARTDATA_TEST_POSTGRES_IMAGE_ID=$image_id" >> "$GITHUB_ENV"
+      - name: Scan the actual PostgreSQL delivery image
+        run: |
+          mkdir -p "$RUNNER_TEMP/postgres-image-scan"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$RUNNER_TEMP/postgres-image-scan:/reports" \
+            aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --image-src docker --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /reports/postgresql-image.json \
+            localhost/smartdata-postgres:18.6-alpine3.24-r1
       - name: Run real PostgreSQL 18 integration tests
         run: ./gradlew --no-daemon --no-parallel --max-workers=2 --stacktrace :runtime-api:integrationTest --write-locks
       - name: Reject stale integration dependency locks
@@ -165,7 +181,11 @@ jobs:
               for key in totals:
                   totals[key] += int(suite.get(key, "0"))
           output = "\n".join(ElementTree.parse(path).getroot().findtext("system-out", "") for path in reports)
-          if "POSTGRESQL_INTEGRATION_PROVIDER=TESTCONTAINERS_POSTGRES_18_6" not in output or "PROVIDER=PORTABLE" in output:
+          if (
+              "POSTGRESQL_INTEGRATION_PROVIDER=TESTCONTAINERS_POSTGRES_18_6" not in output
+              or "POSTGRESQL_INTEGRATION_DISTRIBUTION=SMARTDATA_ALPINE_3_24_R1" not in output
+              or "PROVIDER=PORTABLE" in output
+          ):
               raise SystemExit("CI must prove execution against the real Testcontainers provider")
           if totals["tests"] == 0 or any(totals[key] for key in ("failures", "errors", "skipped")):
               raise SystemExit(f"PostgreSQL checks must execute without failures or skips: {totals}")
@@ -178,6 +198,14 @@ jobs:
           path: |
             runtime-api/build/reports/tests/integrationTest
             runtime-api/build/test-results/integrationTest
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve PostgreSQL image scan evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: ${{ always() }}
+        with:
+          name: smartdata-postgresql-image-scan
+          path: ${{ runner.temp }}/postgres-image-scan/postgresql-image.json
           if-no-files-found: error
           retention-days: 30
 

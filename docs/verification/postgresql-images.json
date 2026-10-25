@@ -1,7 +1,7 @@
 {
   "verifiedOn": "2026-10-25",
   "method": "Docker Hub tag digest matched to Docker Registry manifest response header and locally computed SHA-256 of the HTTPS manifest bytes. TLS certificate verification remained enabled.",
-  "scope": "Immutable multi-architecture manifests and an explicitly selected local portable distribution used only by real PostgreSQL integration tests. This checks provenance and immutability, not image signatures or the absence of vulnerabilities.",
+  "scope": "Pinned image/source provenance and explicitly scoped runtime checks for the PostgreSQL integration environment and local demo. Historical Debian results are retained. This is not a claim that every project image is vulnerability-free or signed.",
   "localPortableDistribution": {
     "name": "EnterpriseDB PostgreSQL 18.6-5 Windows x64 binaries",
     "url": "https://get.enterprisedb.com/postgresql/postgresql-18.6-5-windows-x64-binaries.zip",
@@ -20,7 +20,11 @@
       "purpose": "PostgreSQL 18.6 database under test, fsync and synchronous_commit enabled explicitly",
       "tagSource": "https://hub.docker.com/v2/repositories/library/postgres/tags/18.6-bookworm",
       "manifestSource": "https://registry-1.docker.io/v2/library/postgres/manifests/18.6-bookworm",
-      "sha256": "bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+      "sha256": "bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+      "historicalAcceptedRuns": [
+        "https://github.com/Findddx/smartdata/actions/runs/40206601622",
+        "https://github.com/Findddx/smartdata/actions/runs/40207071130"
+      ]
     },
     {
       "image": "testcontainers/ryuk:0.14.0@sha256:7c1a8a9a47c780ed0f983770a662f80deb115d95cce3e2daa3d12115b8cd28f0",
@@ -35,6 +39,291 @@
       "tagSource": "https://hub.docker.com/v2/repositories/library/alpine/tags/3.24.3",
       "manifestSource": "https://registry-1.docker.io/v2/library/alpine/manifests/3.24.3",
       "sha256": "be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
+    },
+    {
+      "image": "postgres:18.6-alpine3.24@sha256:898c60cb390d1085bc97bdd6a1ae968757421df394b071848b52b1c09c89d6a5",
+      "verifiedAtUtc": "2026-10-25T15:34:29.626Z",
+      "tagSource": "https://hub.docker.com/v2/repositories/library/postgres/tags/18.6-alpine3.24",
+      "manifestSource": "https://registry-1.docker.io/v2/library/postgres/manifests/18.6-alpine3.24",
+      "sha256": "898c60cb390d1085bc97bdd6a1ae968757421df394b071848b52b1c09c89d6a5",
+      "platforms": [
+        {
+          "os": "linux",
+          "architecture": "amd64",
+          "digest": "sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503"
+        },
+        {
+          "os": "linux",
+          "architecture": "arm",
+          "variant": "v6",
+          "digest": "sha256:827374cd5bc47aa237d78957c0117c8ba68a2114db3cb8e78a883554959d4cba"
+        },
+        {
+          "os": "linux",
+          "architecture": "arm",
+          "variant": "v7",
+          "digest": "sha256:bc2831f167ab9b2b8d3d5cfe2212a873de899494d1d9c5e7b63b2f8927ebc8b3"
+        },
+        {
+          "os": "linux",
+          "architecture": "arm64",
+          "variant": "v8",
+          "digest": "sha256:b1c1673a890fba8fae71d37210b4fd9a0b5cd0df8bb994a6bcc01d9cf8e1670c"
+        },
+        {
+          "os": "linux",
+          "architecture": "386",
+          "digest": "sha256:7c64281cc5c73e4010ccd5623a6171076c3d7994ee9ba780dc27efaf89aa1ab8"
+        },
+        {
+          "os": "linux",
+          "architecture": "ppc64le",
+          "digest": "sha256:7c09d1ec772d675ee19fe6e51904fc8b2202715d17eb33128eb76c572f3e8e90"
+        },
+        {
+          "os": "linux",
+          "architecture": "riscv64",
+          "digest": "sha256:c403bc6b4326fdb6771784116e08bd234d8a7918e753ba4268e1e8b66687dfb9"
+        },
+        {
+          "os": "linux",
+          "architecture": "s390x",
+          "digest": "sha256:4ab73894992a0b6f3534b7ed3ac7ddcc0abb56868ec73158f152ef9e05075893"
+        }
+      ],
+      "purpose": "Frozen upstream PostgreSQL base for the patched local demo; the unmodified amd64 image has 27 HIGH/CRITICAL findings and is not accepted as a clean delivery image",
+      "independentlyVerifiedChildDigests": [
+        "sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503",
+        "sha256:b1c1673a890fba8fae71d37210b4fd9a0b5cd0df8bb994a6bcc01d9cf8e1670c"
+      ]
+    },
+    {
+      "image": "golang:1.27.3-alpine3.24@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c",
+      "verifiedAtUtc": "2026-10-25T15:42:51.192Z",
+      "tagSource": "https://hub.docker.com/v2/repositories/library/golang/tags/1.27.3-alpine3.24",
+      "manifestSource": "https://registry-1.docker.io/v2/library/golang/manifests/1.27.3-alpine3.24",
+      "sha256": "b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c",
+      "platforms": [
+        {
+          "architecture": "amd64",
+          "os": "linux",
+          "digest": "sha256:bff16a94c0b4b6d9642581e2a3aa81beb3edb940b2f5a3aac1d22c6a68cb7747"
+        },
+        {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v6",
+          "digest": "sha256:52efed73b4accb3fe90c2d53e297c917c578f80c995da88a4f0770d65cf49de1"
+        },
+        {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7",
+          "digest": "sha256:9958accf016d93be918d548fe603bafec3d2359870cdf7402940c4e1727cffad"
+        },
+        {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8",
+          "digest": "sha256:ee0dcdc452cb73890363fbef65fc333aeb0da7c24ba52f2c6428a37b0e7f4f1c"
+        },
+        {
+          "architecture": "386",
+          "os": "linux",
+          "digest": "sha256:7eadb9cbb0aab2649418025b8472a770195e9a94921309519896514de85bba7f"
+        },
+        {
+          "architecture": "ppc64le",
+          "os": "linux",
+          "digest": "sha256:18b7e8d84b36bcd5ebb804451004011e3c749b0e22894f3dd2033f9862a861c6"
+        },
+        {
+          "architecture": "riscv64",
+          "os": "linux",
+          "digest": "sha256:4ba4943d0a1847ca7b5b7c26c66dc0688ed8beb93a2bf86a9717a4d54380bd70"
+        },
+        {
+          "architecture": "s390x",
+          "os": "linux",
+          "digest": "sha256:4b9fd87ec6c3fb9a4175aa000f26c409b794e564fc7e04082a91dab866ab93df"
+        }
+      ],
+      "purpose": "Build-only Go 1.27.3 compiler; the toolchain is not copied into the runtime image"
+    },
+    {
+      "image": "aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "verifiedAtUtc": "2026-10-25T15:51:54.384Z",
+      "tagSource": "https://hub.docker.com/v2/repositories/aquasec/trivy/tags/0.74.0",
+      "manifestSource": "https://registry-1.docker.io/v2/aquasec/trivy/manifests/0.74.0",
+      "sha256": "62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "platforms": [
+        {
+          "architecture": "amd64",
+          "os": "linux",
+          "digest": "sha256:ee940acbf1f58ebadb42d01434ce4609530bf1b52536afbd1eee66cd7123c5c9"
+        },
+        {
+          "architecture": "arm64",
+          "os": "linux",
+          "digest": "sha256:55ad20f8a239a3e95427e60b8aaea38788550c18a3f1772976bebf732e6ae166"
+        },
+        {
+          "architecture": "s390x",
+          "os": "linux",
+          "digest": "sha256:44617be30edc0f5eab5be810b741c1e74c5dc7e6c000edc3368d520effca7b71"
+        },
+        {
+          "architecture": "ppc64le",
+          "os": "linux",
+          "digest": "sha256:9edf5d82eb667b6fced747620eecd367e70a7b6ede73580d5933085aac89be37"
+        }
+      ],
+      "purpose": "Pinned scanner used for the scoped PostgreSQL delivery-image gate"
     }
-  ]
+  ],
+  "postgresqlDeliveryBuild": {
+    "status": "REMOTE_BUILD_SCAN_SMOKE_AND_PG20_PASSED_CLOUD_CI_PENDING",
+    "localImage": "localhost/smartdata-postgres:18.6-alpine3.24-r1",
+    "recipe": "deploy/docker/postgres.Dockerfile",
+    "distributionPolicy": "Build the fixed recipe locally; Compose pull_policy=build and Testcontainers never pull an unrelated tag. No public derived-image registry digest is claimed.",
+    "upstreamTagAbsent": {
+      "tag": "18.6-alpine3.22",
+      "dockerHubStatus": 404,
+      "registryStatus": 404
+    },
+    "upstreamMaintainerSource": "https://github.com/docker-library/postgres/tree/e00e1bd34ec5c8a8e7ad89b273b3d42efaf6d5bc/18/alpine3.24",
+    "baseOsChange": "Alpine 3.22 to 3.24; PostgreSQL major remains 18; historical-volume upgrade is not tested or executed",
+    "gosu": {
+      "version": "1.19",
+      "commit": "6456aaa0f3c854d199d0f037f068eb97515b7513",
+      "sourceUrl": "https://codeload.github.com/tianon/gosu/tar.gz/6456aaa0f3c854d199d0f037f068eb97515b7513",
+      "archiveSha256": "33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b",
+      "license": "Apache-2.0",
+      "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "goModSha256": "0475f1708db81d718b633faf2d9dd64695037eabdc8562125060607bcb01b2ba",
+      "goSumSha256": "2a8f3fb6adb84839bbb9999f12f1416fb86c184135aaa1c2e489b35203c08346",
+      "compilerVersion": "1.27.3",
+      "sourceModified": false,
+      "symbolsRetainedForBinaryVulnerabilityAnalysis": true
+    },
+    "goDependencies": [
+      {
+        "module": "github.com/moby/sys/user",
+        "version": "v0.1.0",
+        "license": "Apache-2.0",
+        "zipUrl": "https://proxy.golang.org/github.com/moby/sys/user/@v/v0.1.0.zip",
+        "zipSha256": "85178932dc13b1c404c32e1b9f68fe88bf0b43e57dda39f24c45113e0bcf00ee",
+        "goSum": "h1:WmZ93f5Ux6het5iituh9x2zAG7NFY9Aqi49jjE1PaQg="
+      },
+      {
+        "module": "golang.org/x/sys",
+        "version": "v0.1.0",
+        "license": "BSD-3-Clause",
+        "zipUrl": "https://proxy.golang.org/golang.org/x/sys/@v/v0.1.0.zip",
+        "zipSha256": "e7cbe58ed3745ba63d482fe82603119bd635f9a5dd914ed95a4c1826fdcf54a7",
+        "goSum": "h1:kunALQeHf1/185U1i0GOB/fy1IPRDDpuoOOqRReG57U="
+      }
+    ],
+    "brotli": {
+      "version": "1.2.1-r0",
+      "license": "MIT",
+      "fixes": [
+        "CVE-2026-111497"
+      ],
+      "aportsCommit": "8313352127992a9d82e2c2024494f6c38a4dffb4",
+      "sourceUrl": "https://github.com/alpinelinux/aports/blob/8313352127992a9d82e2c2024494f6c38a4dffb4/main/brotli/APKBUILD",
+      "signatureVerification": "apk verify and apk add must verify the signed package with keys in the pinned official Alpine base; no --allow-untrusted",
+      "packages": [
+        {
+          "architecture": "linux/amd64",
+          "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/brotli-libs-1.2.1-r0.apk",
+          "sha256": "62a7e37e43bbfc1f8525a00ad2125fd5897135dc93b849733884cb78ffd8e26c",
+          "bytes": 429435
+        },
+        {
+          "architecture": "linux/arm64",
+          "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/brotli-libs-1.2.1-r0.apk",
+          "sha256": "f802b9d5a329c216f02e73607cb8f662c434767e41686367ac0afcf6d0d45d64",
+          "bytes": 424994
+        }
+      ],
+      "upstreamSourceArchive": {
+        "url": "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v1.2.1",
+        "sha256": "98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f",
+        "sha512MatchesSignedPackageAportsSource": "460591287d428c8b5a8a2766b5b424d14501fcda12c7118b8f3cc4bfae44b90ac75ca156557f07b6e22542612724d904533e5f70019be07dbbb604c46f03ab69",
+        "licenseSha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+      }
+    },
+    "unpatchedUpstreamScan": {
+      "scanner": "Trivy 0.74.0",
+      "platform": "linux/amd64",
+      "imageSource": "remote",
+      "high": 26,
+      "critical": 1,
+      "includesUnfixed": true,
+      "exitCode": 1,
+      "affectedComponents": [
+        "brotli-libs 1.2.0-r1",
+        "gosu binary stdlib go1.24.6"
+      ],
+      "vulnerabilityDatabaseUpdatedAtUtc": "2026-10-25T12:57:48.463991102Z"
+    },
+    "testedPatchedArchitectures": [
+      "linux/amd64"
+    ],
+    "recipeSha256": "85c4cc6f2ee1677d69f392a59549cb81ef027510df2a0c85bacbc54180f97ba8",
+    "nodeImageId": "sha256:1b064643612729e7604165f470518b16331f274cb9986f8d9045738e4de33bb6",
+    "arm64RuntimeAcceptance": "NOT_EXECUTED; package inputs are pinned but no runtime claim is made",
+    "remotePatchedScan": {
+      "scanner": "Trivy 0.74.0",
+      "platform": "linux/amd64",
+      "source": "actual built Docker delivery image",
+      "high": 0,
+      "critical": 0,
+      "includesUnfixed": true,
+      "exitCode": 0,
+      "vulnerabilityIgnoreOrVexAdded": false,
+      "vulnerabilityDatabaseUpdatedAtUtc": "2026-10-25T12:57:48.463991102Z",
+      "reportSha256": "bfacc7a95e16c5fc05fce0ee3c6ef8ec51b64cf9f5db3a7021a180f70b1498e4"
+    },
+    "freshVolumeSmoke": {
+      "result": "PASS",
+      "defaultUid": 70,
+      "gosu": "1.19 (go1.27.3 on linux/amd64; gc)",
+      "brotli": "1.2.1-r0",
+      "postgresVersionNum": 180006,
+      "fsync": "on",
+      "fullPageWrites": "on",
+      "restartRestoredCommittedSyntheticRow": true,
+      "networkMode": "none",
+      "containerAndNewAnonymousVolumeRemovedByExactOwnership": true,
+      "historicUserVolumesTouched": false
+    },
+    "nodeTransports": {
+      "registryMirror": "https://docker.m.daocloud.io",
+      "allManifestBytesMatchOfficialSha256": true,
+      "goModuleProxy": "https://goproxy.cn",
+      "checksumDatabaseIdentity": "sum.golang.org",
+      "upstreamGoSumEnforced": true,
+      "jdkTransport": "https://mirrors.tuna.tsinghua.edu.cn/Adoptium/25/jdk/x64/linux/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4.1_1.tar.gz",
+      "jdkSha256MatchesPinnedOfficialArchive": "dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e",
+      "globalDockerSshVpnConfigurationChanged": false,
+      "tlsVerificationDisabled": false
+    },
+    "nodeEngineeringRegression": {
+      "result": "PASS",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "provider": "TESTCONTAINERS_POSTGRES_18_6",
+      "distribution": "SMARTDATA_ALPINE_3_24_R1",
+      "imageId": "sha256:1b064643612729e7604165f470518b16331f274cb9986f8d9045738e4de33bb6",
+      "junitSha256": "71ce0286b6d1f9326c69ffd80ec0ca44ec15eb77ad081cd30b0017da6ab9740e",
+      "evidenceArchiveSha256": "fdebe9623ea0440e85f763d2cb153ea94823fa9af2a6280adc1eadbd4f7a0f6e",
+      "testHelperSha256": "9a2c20f04c78bccaca3319d78d37699b3a98b812d5ab7095137905689583ae30",
+      "dependencyVerificationUnchanged": true,
+      "dependencyLockLogicalContentsUnchanged": true
+    }
+  }
 }

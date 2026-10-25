@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: SmartData workspace metadata lineage
+  version: 1.0.0
+  license: { name: Apache-2.0, identifier: Apache-2.0 }
+  description: >-
+    当前工作区可见元数据、人工来源声明和决策计划。METADATA_VISIBLE不等于来源读写授权。
+    默认图有明确覆盖预算，字段可分页；未物化的实体与口径不作为已计算结果。
+servers: [{ url: /api/v1 }]
+security:
+  - {}
+  - localActor: []
+tags:
+  - name: Workspace
+    description: 当前工作区的可见元数据与版本化来源声明。
+paths:
+  /workspace/lineage:
+    get:
+      tags: [Workspace]
+      operationId: getWorkspaceLineage
+      summary: 查看有覆盖说明的本轮血缘
+      responses:
+        '200':
+          description: 最多3000节点、6000边，默认256字段；coverage.partial明确是否覆盖不全。
+          content:
+            application/json:
+              schema: { $ref: '../workspace/lineage-v1.schema.json' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/lineage/sources/{sourceId}/assets/{assetId}/fields:
+    get:
+      tags: [Workspace]
+      operationId: getWorkspaceLineageFields
+      summary: 分页查看当前成功盘点的单表字段
+      parameters:
+        - { name: sourceId, in: path, required: true, schema: { type: string } }
+        - { name: assetId, in: path, required: true, schema: { type: string } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 128, default: 128 } }
+      responses:
+        '200':
+          description: 字段元数据和TABLE到FIELD的物理包含关系；须按stateVersion避免跨版本拼接。
+          content:
+            application/json:
+              schema: { $ref: '../workspace/lineage-v1.schema.json#/$defs/FieldPage' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/lineage/mappings:
+    get:
+      tags: [Workspace]
+      operationId: getWorkspaceLineageMappings
+      summary: 管理员读取当前来源映射
+      responses:
+        '200':
+          description: 仅ADMIN可读，包含映射版本、实体输入、权威指标版本引用和决策计划引用。
+          content:
+            application/json:
+              schema: { $ref: '../workspace/lineage-v1.schema.json#/$defs/Mappings' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+    post:
+      tags: [Workspace]
+      operationId: saveWorkspaceLineageMappings
+      summary: 管理员按两个预期版本登记来源映射
+      parameters: [{ $ref: './workspace-v1.yaml#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/lineage-v1.schema.json#/$defs/SaveMappingsCommand' }
+      responses:
+        '200': { $ref: './workspace-v1.yaml#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+components:
+  securitySchemes:
+    localActor:
+      $ref: './workspace-v1.yaml#/components/securitySchemes/localActor'

@@ -1,0 +1,45 @@
+{
+  "dependencyResolution": "Official Central preferred for ordinary plugin artifacts; four marker modules retain locked plugin portal bytes",
+  "dependencyVerification": "STRICT_UNCHANGED",
+  "domainFixtureSha256": "86d80dbe9f3efd31d797bfab9fbf132469d877a719e91b7bd7b265a9415cada0",
+  "gpuAccelerationUsed": false,
+  "jar": [
+    {
+      "bytes": 109113864,
+      "name": "runtime-api-0.1.0-SNAPSHOT.jar",
+      "sha256": "c4845bf296869fc7897f624bd1d98af6270cd18eeed1398ba352ec8200abd123"
+    }
+  ],
+  "javaRuntime": "25.0.4.1+1-LTS",
+  "modules": {
+    "domain-compiler": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 4
+    },
+    "foundation-kernel": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 34
+    },
+    "runtime-api": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 87
+    },
+    "workflow-worker": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 6
+    }
+  },
+  "privateDependencyRoutingInitSha256": "3ec92236f4935b2c42c369c4f3f94bb952eb563e0470147d3e23466f3fb9d4ef",
+  "sourceArchiveSha256": "a761dcf15cba286a0d7b18afb7b6038bca435dedb614f4524c674cfd493deaa9",
+  "status": "PASSED",
+  "testExecutionLocation": "AUTHORIZED_GPU_HOST",
+  "totalTests": 131
+}

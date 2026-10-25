@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <title>SmartData optical inspection ruler</title>
+  <defs>
+    <pattern id="ruler" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#e9eeed"/>
+      <path d="M20 0v40M0 20h40" fill="none" stroke="#31556a" stroke-width="2"/>
+      <path d="M0 0v40" fill="none" stroke="#b76450" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="640" height="360" fill="url(#ruler)"/>
+  <path d="M72 306Q240 42 548 76M86 330Q342 206 554 38" fill="none" stroke="#334753" stroke-width="5"/>
+</svg>

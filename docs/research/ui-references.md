@@ -1,6 +1,54 @@
 # SmartData 界面参考与取舍
 
-核对日期：2026-10-25。本文记录本轮设计依据；具体版本见根目录 `research-lock.yaml`。四个仓库均已浅克隆到本机 `.research-cache/`，其中大型仓库只展开相关源码，方便学习且不进入公开仓库。它们目前都属于设计参考，没有因这份调研被加入产品依赖。
+核对日期：2026-10-25。参考代码按版本保存在被忽略的 `.research-cache/`，大型仓库只展开相关源码。研究参考与运行代码分别管理，固定版本、许可证和采用边界见根目录 `research-lock.yaml`；本轮采用的光学小核另有完整许可与来源说明。
+
+## 最新反馈：紧凑岛屿与真实折射
+
+用户进一步拒绝了硬分栏与按层级划满屏幕的竖列。本轮重新核对
+[VS Code 10月15日官方设计说明](https://code.visualstudio.com/blogs/2026/10/15/modern-ui)及
+[固定源码](https://github.com/microsoft/vscode/tree/4ef6bab74bc303c46e8311904c6400b1a31ce761/src/vs/workbench/contrib/modernUI)。
+采用统一表面、紧凑间距与清楚的焦点规则，实际实现约8px岛间距；VS Code自己的磨砂
+浮层不是本项目液态折射的证明，后者另做源代码和真实像素检查。
+
+| 光学候选 | 本次核对版本 | 取舍 |
+|---|---|---|
+| [rdev](https://github.com/rdev/liquid-glass-react/tree/ac48eab18d1f7f444ae30002d240cae29c863a21) | npm1.1.1，HEAD仍为2025-06-13；MIT | 热门但并非近期更新；主要是Canvas生成位移图，Safari/Firefox缺位移，不作默认运行时 |
+| [simple-liquid-glass](https://github.com/lucaperullo/simple-liquid-glass/tree/53e1e98ec18a42d01971bd08fc05175772a91852) | npm5.4.0；MIT；HEAD与发布源码分开核对 | React19备选，但HTML背景路径包含截图与缓存，不用于整个业务页面 |
+| [Glass-HQ](https://github.com/Glass-HQ/liquid-glass/tree/089c396ccb6f46233973a8c7758fad90e1713c97) | npm/tag0.0.2；MIT | 图形加速与组件方案较新，需更多依赖与设备审查，留作后续实验 |
+| [gentpan核心](https://github.com/gentpan/liquidglass/tree/068ad226f53e1ca62d857f78bdc32f58f3c5fce7) | 固定提交068ad226；无npm/tag；MIT | 采用其零依赖光学单文件，另加预算、生命周期与可替换适配层，不采用组件、壁纸、安装脚本 |
+
+最终通过了三种真实浏览器内核的[像素对照](../verification/2026-10-25-material-optics.json)，
+没有用星数、配置名称或作者自述冒充效果验收。原理另对照
+[Aave官方工程说明](https://aave.com/design/building-glass-for-the-web)；采用范围、轻微修改
+及完整许可见[材料层说明](../../console/src/materials/README.md)。
+
+画布交互重新参考[Flowith官方节点说明](https://flowith.io/docs/en/canvas/node-interaction/)，
+以及[Histography](https://histography.io/)和[The Refugee Project作者说明](https://www.hyperakt.com/work/the-refugee-project)。
+借鉴聚焦、全局定位、按需细节与来源解释，不复制品牌或营销页面。其奖项分别见
+[Awwwards官方记录](https://www.awwwards.com/sites/histography)与
+[Information is Beautiful官方记录](https://www.informationisbeautifulawards.com/showcase/475-the-refugee-project)，
+不是本项目获得奖项。D3与React Flow也核对过；本轮保留已有Dagre排布器，以真实依赖
+排列节点，未因外观改动先引入多套视角控制器。
+
+## 首轮参考与保留的采用边界
+
+上一版界面已被用户明确指出审美和交互不理想。此前功能测试与以下设计原则不代表
+用户已经接受视觉效果。本轮新增研究
+[ZCode 固定版本](https://github.com/zai-org/ZCode/tree/3c5b227649371507ddc4eb46ac5133afe6db1cab)，
+核对其 Apache-2.0 许可，并重新阅读上方固定版本的 open-claude-ui。
+
+新的工作面以数据血缘为核心：可收起的轻导航、紧凑工具栏、清楚的语义层级与右侧
+上下文面板。大标题与装饰性的流程卡让位于实际工作。图谱颜色、图标、节点形状、
+箭头与线型分别承担信息，实际观察、人工声明和未来计划不能混淆。
+
+项目标识与类型图标单独设计，不使用 Claude 花形或 ZCode 的品牌。艺术图像只用于
+合适的欢迎与空态，不干扰工作图和证据文字。内置 imagegen 首次返回 403，原路径
+稍后重试已成功生成两张艺术贴图；本轮未切换备用供应商。手绘 SVG 与实际生图资产
+分别记录来源，不相互冒充。
+
+新增轻量布局库 `@dagrejs/dagre 3.1.3` 与 `@dagrejs/graphlib 4.0.6` 为 MIT，
+精确锁定。使用 SVG 与普通网页节点承载交互；只有经过实际浏览器检查、用户验收
+后，才整理成新的设计技能。参考缓存此前不清理。
 
 ## 界面要帮助用户完成什么
 
@@ -39,4 +87,5 @@ Remotion 的商业资格取决于其[具体许可条款](https://github.com/remo
 
 公开仓库收录产品源码、公开说明、许可证和去标识的示例。`resume/` 中的原始思考、聊天及文档留在本机；`.research-cache/`、运行日志、截图、凭据和持久化业务数据也不提交。本轮 `.gitignore` 将根目录 `/data/` 作为本地数据目录，保留 `console/src/data/` 这类产品代码目录，防止新用户下载后缺少必要文件。
 
-借鉴设计模式不等于复制代码。如果后续确实复用 MIT 源码，必须保留原作者许可声明；若引入第三方素材或商业功能，再按具体文件或产品条款单独核对。
+本轮仅光学小核进入运行代码，其MIT全文同时保存在源码与构建后的静态分发目录。
+其他参考不因此成为运行依赖；若以后复用更多代码、素材或商业功能，仍按具体条款逐项核对。

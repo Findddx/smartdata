@@ -1,0 +1,913 @@
+/* Compact work islands. Color communicates meaning; material stays behind content. */
+.sd-desktop {
+  box-sizing: border-box;
+  --liquid-tint: rgb(243 248 251 / 0.55);
+  --liquid-solid: #eff4f7;
+  --sd-canvas: #e5e9ec;
+  --sd-surface: #f7f9fa;
+  --sd-raised: #fff;
+  --sd-muted-surface: #e9eef1;
+  --sd-ink: #26343f;
+  --sd-secondary: #5d6d79;
+  --sd-muted: #687884;
+  --sd-line: #dce3e8;
+  --sd-accent: #245b7c;
+  --sd-accent-ink: #164c6e;
+  --sd-accent-soft: #dceaf2;
+  --sd-on-accent: #fff;
+  --sd-sidebar-text: #3f5363;
+  --sd-sidebar-muted: #6b7c89;
+  --sd-layer-L0: #39759e;
+  --sd-layer-L1: #b36259;
+  --sd-layer-L2: #5c806b;
+  --sd-layer-L3: #937448;
+  --sd-island-shadow: 0 2px 7px #1e38400a, 0 12px 32px #28435509;
+  --sd-glass-tint: #f3f7f9;
+  grid-template-columns: 192px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  background: var(--sd-canvas);
+}
+.sd-desktop[data-theme="titanium"] {
+  --liquid-tint: rgb(29 43 55 / 0.64);
+  --liquid-solid: #24323e;
+  --sd-canvas: #171f26;
+  --sd-surface: #202a33;
+  --sd-raised: #2a3641;
+  --sd-muted-surface: #303e4a;
+  --sd-ink: #e2eaf0;
+  --sd-secondary: #b3c1cd;
+  --sd-muted: #9badbc;
+  --sd-line: #3a4956;
+  --sd-accent: #8bbad5;
+  --sd-accent-ink: #a5cfe5;
+  --sd-accent-soft: #304b5e;
+  --sd-on-accent: #142b3a;
+  --sd-sidebar-text: #c2d0db;
+  --sd-sidebar-muted: #9aafbf;
+  --sd-layer-L0: #8bb7d7;
+  --sd-layer-L1: #d79388;
+  --sd-layer-L2: #99b9a3;
+  --sd-layer-L3: #c8ad82;
+  --sd-island-shadow: 0 3px 10px #0002, 0 18px 42px #0002;
+  --sd-glass-tint: #253441;
+}
+.sd-desktop[data-theme="muse"] {
+  --liquid-tint: rgb(239 249 244 / 0.6);
+  --liquid-solid: #edf6f1;
+  --sd-canvas: #e1ebe8;
+  --sd-surface: #f6faf8;
+  --sd-raised: #fcfffd;
+  --sd-muted-surface: #e7efeb;
+  --sd-ink: #29443d;
+  --sd-secondary: #56776b;
+  --sd-muted: #637d73;
+  --sd-line: #d6e4dd;
+  --sd-accent: #2d7365;
+  --sd-accent-ink: #215f54;
+  --sd-accent-soft: #dcece6;
+  --sd-sidebar-text: #45685b;
+  --sd-sidebar-muted: #617f72;
+  --sd-glass-tint: #f0f8f4;
+}
+.sd-desktop[data-theme="cinnabar"] {
+  --sd-canvas: #e6e5e0;
+  --sd-surface: #f8f8f5;
+  --sd-raised: #fffffc;
+  --sd-muted-surface: #ebece7;
+  --sd-ink: #353b3b;
+  --sd-secondary: #666e6d;
+  --sd-muted: #707977;
+  --sd-line: #dfe3df;
+  --sd-accent: #a94e40;
+  --sd-accent-ink: #924034;
+  --sd-accent-soft: #f0e1dc;
+  --sd-sidebar-text: #4b5757;
+  --sd-sidebar-muted: #6d7775;
+  --sd-glass-tint: #f7f7f2;
+  --liquid-tint: rgb(248 248 242 / 0.58);
+  --liquid-solid: #f0f1ec;
+}
+.sd-desktop .sd-theme-picker {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.sd-desktop .sd-theme-picker [data-preview="cinnabar"] .sd-theme-swatch {
+  background: #eceee7;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="cinnabar"]
+  .sd-theme-swatch
+  i:nth-child(1) {
+  background: #fdfdf8;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="cinnabar"]
+  .sd-theme-swatch
+  i:nth-child(2) {
+  background: #a94e40;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="cinnabar"]
+  .sd-theme-swatch
+  i:nth-child(3) {
+  background: #9c8457;
+}
+.sd-desktop .sd-environment {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--sd-canvas);
+}
+.sd-environment img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 25% 50%;
+  opacity: 0.26;
+  filter: saturate(0.65);
+}
+.sd-desktop[data-theme="titanium"] .sd-environment img {
+  opacity: 0.15;
+  filter: saturate(0.4) brightness(0.65);
+}
+.sd-desktop .sd-liquid-host {
+  isolation: isolate;
+  background: transparent;
+}
+.sd-desktop .sd-liquid-host > :not(.sd-liquid-material) {
+  position: relative;
+  z-index: 1;
+}
+.sd-desktop .sd-sidebar {
+  border: 1px solid #ffffff38;
+  border-radius: 20px;
+  padding: 12px 8px 0;
+  box-shadow: var(--sd-island-shadow);
+  overflow: hidden;
+}
+.sd-desktop .sd-wordmark {
+  padding: 6px 10px 17px;
+  min-height: 48px;
+}
+.sd-desktop .sd-wordmark > span {
+  font-size: 16px;
+}
+.sd-desktop .sd-org {
+  margin-bottom: 12px;
+  padding: 8px 7px;
+}
+.sd-desktop .sd-org strong {
+  max-width: 115px;
+}
+.sd-desktop .sd-nav-label {
+  font-size: 10px;
+  margin-left: 11px;
+}
+.sd-desktop .sd-sidebar nav {
+  gap: 2px;
+}
+.sd-desktop .sd-sidebar nav > button {
+  min-height: 36px;
+  padding: 8px 11px;
+  border-radius: 9px;
+}
+.sd-desktop .sd-nav-indicator {
+  background: color-mix(in srgb, var(--sd-raised) 66%, transparent);
+  box-shadow:
+    0 1px 3px #1731460b,
+    inset 0 1px #fff5;
+  border-radius: 9px;
+}
+.sd-desktop .sd-sidebar nav > button.is-active {
+  color: var(--sd-accent-ink);
+}
+.sd-desktop .sd-local-identity {
+  margin: 9px -8px 0;
+  padding: 12px 13px;
+  border-top: 0;
+}
+.sd-desktop .sd-sidebar-bottom {
+  padding-top: 10px;
+}
+.sd-desktop .sd-shell-content {
+  height: 100%;
+  gap: 7px;
+  min-height: 0;
+  overflow: hidden;
+}
+.sd-desktop .sd-topbar {
+  height: 43px;
+  min-height: 43px;
+  padding: 0 12px;
+  border: 1px solid #ffffff38;
+  border-radius: 15px;
+  box-shadow: var(--sd-island-shadow);
+  overflow: hidden;
+}
+.sd-desktop .sd-main {
+  background: var(--sd-surface);
+  border: 1px solid color-mix(in srgb, var(--sd-line) 60%, transparent);
+  border-radius: 20px;
+  box-shadow: var(--sd-island-shadow);
+  scrollbar-width: thin;
+}
+.sd-desktop[data-view="graph"] .sd-main {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.sd-desktop .sd-statusbar {
+  height: 20px;
+  min-height: 20px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  font-size: 9px;
+}
+.sd-desktop .sd-page {
+  padding: 25px 30px 40px;
+}
+.sd-desktop .sd-page-title h1 {
+  font-size: 21px;
+  letter-spacing: -0.4px;
+}
+.sd-desktop .sd-page-title {
+  margin-bottom: 23px;
+}
+.sd-desktop .sd-button {
+  border-radius: 9px;
+}
+.sd-desktop .sd-icon {
+  border-radius: 8px;
+}
+.sd-desktop .sd-command-button kbd {
+  font-size: 9px;
+}
+.sd-desktop.sd-nav-collapsed {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+.sd-desktop.sd-nav-collapsed .sd-sidebar {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+.sd-desktop.sd-nav-collapsed .sd-wordmark {
+  padding: 6px 0 17px;
+}
+.sd-desktop.sd-nav-collapsed .sd-sidebar nav > button {
+  padding: 9px 0;
+}
+.sd-desktop.sd-nav-collapsed .sd-local-identity {
+  margin-left: -5px;
+  margin-right: -5px;
+}
+.sd-desktop .sd-theme-picker [data-preview="mineral"] .sd-theme-swatch {
+  background: #eef3f6;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="mineral"]
+  .sd-theme-swatch
+  i:nth-child(1) {
+  background: #fcfeff;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="mineral"]
+  .sd-theme-swatch
+  i:nth-child(2) {
+  background: #205472;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="mineral"]
+  .sd-theme-swatch
+  i:nth-child(3) {
+  background: #ba685a;
+}
+.sd-desktop .sd-theme-picker [data-preview="titanium"] .sd-theme-swatch {
+  background: #202a33;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="titanium"]
+  .sd-theme-swatch
+  i:nth-child(1) {
+  background: #344553;
+}
+.sd-desktop
+  .sd-theme-picker
+  [data-preview="titanium"]
+  .sd-theme-swatch
+  i:nth-child(2) {
+  background: #8bbad5;
+}
+
+/* Graph is a continuous, navigable field. No business layer is a geometric column. */
+.sd-desktop .sd-page.sd-page-graph {
+  padding: 0;
+}
+.sd-desktop .sd-graph-workbench {
+  position: relative;
+  background: transparent;
+}
+.sd-desktop .sd-graph-body {
+  gap: 8px;
+  border: 0;
+}
+.sd-desktop .sd-graph-stage {
+  border: 1px solid color-mix(in srgb, var(--sd-line) 65%, transparent);
+  border-radius: 21px;
+  overflow: hidden;
+  box-shadow: var(--sd-island-shadow);
+  background-color: var(--sd-surface);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--sd-secondary) 16%, transparent) 0.65px,
+    transparent 0.65px
+  );
+  background-size: 20px 20px;
+}
+.sd-desktop .sd-graph-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 6;
+  padding: 9px 11px 9px 15px;
+  min-height: 50px;
+  border: 1px solid #ffffff70;
+  border-radius: 18px;
+  box-shadow: 0 5px 20px #1935450c;
+  gap: 10px;
+  overflow: hidden;
+}
+.sd-desktop .sd-graph-workbench.has-inspector .sd-graph-toolbar {
+  right: 324px;
+}
+.sd-desktop .sd-graph-title {
+  gap: 8px;
+}
+.sd-desktop .sd-graph-title h1 {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.sd-desktop .sd-graph-title > span {
+  display: none;
+}
+.sd-desktop .sd-graph-tools {
+  gap: 5px;
+}
+.sd-desktop .sd-graph-search {
+  padding: 5px 7px;
+  border-radius: 8px;
+}
+.sd-desktop .sd-graph-search:focus-within {
+  background: var(--sd-accent-soft);
+}
+.sd-desktop .sd-graph-search input {
+  width: 140px;
+  font-size: 11px;
+}
+.sd-desktop .sd-graph-scope {
+  position: absolute;
+  top: 72px;
+  left: 29px;
+  right: 25px;
+  z-index: 3;
+  padding: 0;
+  gap: 12px;
+  font-size: 10px;
+  pointer-events: none;
+}
+.sd-desktop .sd-graph-scope button {
+  pointer-events: auto;
+  font-size: 10px;
+}
+.sd-desktop .sd-graph-scope b {
+  font-size: 9px;
+  border: 0;
+  background: var(--sd-muted-surface);
+}
+.sd-desktop .has-inspector .sd-graph-scope {
+  right: 335px;
+}
+.sd-desktop .sd-graph-filters {
+  position: absolute;
+  top: 69px;
+  right: 12px;
+  z-index: 7;
+  padding: 16px;
+  max-width: 590px;
+  border: 1px solid #ffffff60;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px #1935451f;
+  gap: 18px;
+  overflow: hidden;
+}
+.sd-desktop .has-inspector .sd-graph-filters {
+  right: 324px;
+}
+.sd-desktop .sd-graph-filters > div {
+  gap: 12px;
+}
+.sd-desktop .sd-graph-layer-nav {
+  display: flex;
+  position: absolute;
+  bottom: 42px;
+  left: 21px;
+  z-index: 3;
+  gap: 4px;
+  padding: 5px;
+  background: color-mix(in srgb, var(--sd-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sd-line) 70%, transparent);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+}
+.sd-desktop .sd-graph-layer-nav button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 10px;
+}
+.sd-desktop .sd-graph-layer-nav button:hover {
+  background: var(--sd-muted-surface);
+}
+.sd-desktop .sd-graph-layer-nav span {
+  font-size: 10px;
+}
+.sd-desktop .sd-graph-layer-nav button:disabled {
+  opacity: 0.4;
+}
+.sd-desktop .sd-graph-node {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--layer-color) 20%, var(--sd-line));
+  box-shadow:
+    0 2px 5px #17394b0c,
+    0 8px 22px #17394b04;
+}
+.sd-desktop .sd-node-heading strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.sd-desktop .sd-node-glyph {
+  background: transparent;
+  width: 23px;
+  height: 23px;
+}
+.sd-desktop .sd-node-meta {
+  padding-left: 31px;
+  font-size: 9px;
+  gap: 5px;
+}
+.sd-desktop .sd-node-source {
+  color: var(--sd-muted);
+  font-size: 9px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+.sd-desktop .sd-node-field {
+  border-radius: 22px;
+  padding: 10px 12px;
+}
+.sd-desktop .sd-node-field .sd-node-meta {
+  padding-left: 0;
+}
+.sd-desktop .sd-node-field .sd-node-status {
+  font-size: 8px;
+}
+.sd-desktop .sd-node-status {
+  font-size: 9px;
+  gap: 4px;
+}
+.sd-desktop .sd-node-business_entity {
+  border-radius: 18px;
+}
+.sd-desktop .sd-node-metric {
+  border-radius: 24px;
+}
+.sd-desktop .sd-node-decision_plan {
+  border-radius: 12px 25px 12px 25px;
+}
+.sd-desktop .sd-graph-node.is-selected {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--layer-color) 10%, transparent),
+    0 8px 25px #17394b12;
+}
+.sd-desktop .sd-graph-edges {
+  color: color-mix(in srgb, var(--sd-secondary) 58%, var(--sd-line));
+}
+.sd-desktop .sd-graph-edge > path:last-child {
+  stroke-width: 1.25;
+}
+.sd-desktop .sd-graph-inspector {
+  width: 304px;
+  padding: 0 20px 20px;
+  border: 1px solid #ffffff38;
+  border-radius: 20px;
+  box-shadow: var(--sd-island-shadow);
+  overflow-x: hidden;
+}
+.sd-desktop .sd-graph-inspector > header {
+  padding: 13px 0 11px;
+  margin-bottom: 19px;
+  border-bottom-color: color-mix(in srgb, var(--sd-line) 65%, transparent);
+}
+.sd-desktop .sd-inspector-identity h2 {
+  font-size: 18px;
+}
+.sd-desktop .sd-inspector-section {
+  padding: 16px 0;
+  border-top-color: color-mix(in srgb, var(--sd-line) 60%, transparent);
+}
+.sd-desktop .sd-inspector-section h3 {
+  font-size: 11px;
+}
+.sd-desktop .sd-inspector-section p,
+.sd-desktop .sd-inspector-section dl {
+  font-size: 11px;
+}
+.sd-desktop .sd-inspector-badges span {
+  border-radius: 5px;
+}
+.sd-desktop .sd-graph-footnote {
+  min-height: 25px;
+  padding: 6px 8px 0;
+  border: 0;
+  font-size: 9px;
+}
+.sd-desktop .sd-graph-canvas-bottom {
+  bottom: 16px;
+  left: 18px;
+  right: 18px;
+}
+.sd-desktop .sd-graph-legend-trigger,
+.sd-desktop .sd-graph-zoom {
+  border-radius: 11px;
+}
+.sd-desktop .sd-graph-legend {
+  bottom: 110px;
+  left: 19px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #ffffff66;
+}
+.sd-desktop .sd-graph-legend > button {
+  position: absolute;
+}
+.sd-desktop .sd-graph-coverage,
+.sd-desktop .sd-graph-field-scope,
+.sd-desktop .sd-graph-selection-note {
+  position: relative;
+  z-index: 4;
+  margin: 0 0 7px;
+  border-radius: 12px;
+  border: 1px solid var(--sd-line);
+  background: var(--sd-surface);
+}
+.sd-desktop
+  .sd-graph-workbench:has(
+    .sd-graph-coverage,
+    .sd-graph-field-scope,
+    .sd-graph-selection-note
+  ) {
+  padding-top: 104px;
+}
+.sd-desktop .sd-graph-empty {
+  padding-top: 100px;
+}
+.sd-desktop .sd-graph-state {
+  padding-top: 100px;
+}
+.sd-desktop .sd-graph-node-list {
+  padding-top: 110px;
+}
+.sd-desktop .sd-graph-list-head {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .sd-desktop .sd-graph-workbench.has-inspector .sd-graph-toolbar {
+    right: 12px;
+  }
+  .sd-desktop .has-inspector .sd-graph-scope {
+    right: 25px;
+  }
+  .sd-desktop .has-inspector .sd-graph-filters {
+    right: 12px;
+  }
+  .sd-desktop .sd-graph-inspector {
+    position: absolute;
+    right: 10px;
+    top: 105px;
+    bottom: 42px;
+    z-index: 5;
+    max-height: none;
+  }
+  .sd-desktop .sd-graph-search input {
+    width: 110px;
+  }
+}
+@media (max-width: 760px) {
+  .sd-desktop,
+  .sd-desktop.sd-nav-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 5px;
+  }
+  .sd-desktop .sd-sidebar {
+    position: fixed;
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    width: 230px;
+    height: auto;
+    border-radius: 19px;
+    padding: 15px 9px 0;
+  }
+  .sd-desktop.sd-nav-collapsed .sd-sidebar {
+    padding: 15px 9px 0;
+  }
+  .sd-desktop.sd-nav-collapsed .sd-sidebar nav > button {
+    padding: 9px 12px;
+  }
+  .sd-desktop.sd-nav-collapsed .sd-wordmark {
+    padding: 6px 10px 17px;
+  }
+  .sd-desktop .sd-shell-content {
+    height: 100%;
+    gap: 6px;
+  }
+  .sd-desktop .sd-topbar {
+    height: 43px;
+    min-height: 43px;
+    padding: 0 7px;
+    border-radius: 14px;
+  }
+  .sd-desktop .sd-topbar .sd-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .sd-desktop .sd-topbar > div {
+    gap: 7px;
+  }
+  .sd-desktop .sd-command-button {
+    padding: 5px;
+  }
+  .sd-desktop .sd-command-button kbd {
+    display: none;
+  }
+  .sd-desktop .sd-topbar-divider {
+    display: none;
+  }
+  .sd-desktop .sd-main {
+    border-radius: 17px;
+  }
+  .sd-desktop .sd-page {
+    padding: 21px 17px 30px;
+  }
+  .sd-desktop .sd-statusbar {
+    height: 19px;
+    min-height: 19px;
+    padding: 0 4px;
+    font-size: 8px;
+  }
+  .sd-desktop .sd-graph-stage {
+    border-radius: 17px;
+  }
+  .sd-desktop .sd-graph-toolbar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    padding: 7px 9px;
+    border-radius: 14px;
+    min-height: 47px;
+    gap: 6px;
+  }
+  .sd-desktop .sd-graph-workbench.has-inspector .sd-graph-toolbar {
+    right: 8px;
+  }
+  .sd-desktop .sd-graph-title > svg {
+    width: 15px;
+  }
+  .sd-desktop .sd-graph-title h1 {
+    font-size: 12px;
+  }
+  .sd-desktop .sd-graph-search {
+    display: none;
+  }
+  .sd-desktop .sd-graph-tools {
+    gap: 3px;
+  }
+  .sd-desktop .sd-graph-toolbar .sd-button {
+    padding: 7px 8px;
+    min-height: 33px;
+    font-size: 10px !important;
+  }
+  .sd-desktop .sd-graph-toolbar .sd-icon {
+    width: 32px;
+    height: 33px;
+  }
+  .sd-desktop .sd-graph-tools .sd-button svg {
+    width: 13px;
+  }
+  .sd-desktop .sd-graph-tools .sd-button > svg:last-child:not(:first-child) {
+    display: none;
+  }
+  .sd-desktop .sd-graph-scope {
+    top: 67px;
+    left: 18px;
+    right: 15px;
+    gap: 9px;
+    font-size: 9px;
+    line-height: 1.5;
+  }
+  .sd-desktop .sd-graph-scope > span:nth-child(2) {
+    display: none;
+  }
+  .sd-desktop .sd-graph-filters {
+    top: 60px;
+    right: 8px;
+    left: 8px;
+    max-width: none;
+    padding: 15px;
+    font-size: 11px;
+    gap: 14px;
+  }
+  .sd-desktop .has-inspector .sd-graph-filters {
+    right: 8px;
+  }
+  .sd-desktop .sd-graph-filters input {
+    width: 16px;
+    height: 16px;
+  }
+  .sd-desktop .sd-graph-layer-nav {
+    left: 11px;
+    right: 11px;
+    bottom: 63px;
+    padding: 4px;
+    gap: 1px;
+    width: max-content;
+    max-width: calc(100% - 22px);
+    overflow-x: auto;
+  }
+  .sd-desktop .sd-graph-layer-nav button {
+    min-height: 32px;
+    padding: 4px 7px;
+    white-space: nowrap;
+    font-size: 9px;
+  }
+  .sd-desktop .sd-graph-layer-nav span {
+    font-size: 9px;
+  }
+  .sd-desktop .sd-graph-canvas-bottom {
+    bottom: 13px;
+    left: 12px;
+    right: 12px;
+  }
+  .sd-desktop .sd-graph-legend-trigger {
+    font-size: 9px;
+    padding: 9px 7px;
+  }
+  .sd-desktop .sd-graph-zoom {
+    gap: 0;
+  }
+  .sd-desktop .sd-graph-zoom > button {
+    width: 30px;
+    height: 32px;
+  }
+  .sd-desktop .sd-graph-zoom > span {
+    width: 32px;
+  }
+  .sd-desktop .sd-graph-legend {
+    left: 11px;
+    right: 11px;
+    width: auto;
+    bottom: 112px;
+  }
+  .sd-desktop .sd-graph-inspector {
+    left: 9px;
+    right: 9px;
+    top: auto;
+    bottom: 37px;
+    width: auto;
+    max-height: 66%;
+    padding: 0 19px 19px;
+    border-radius: 20px;
+    z-index: 8;
+  }
+  .sd-desktop .sd-graph-inspector > header {
+    padding-top: 11px;
+    margin-bottom: 12px;
+  }
+  .sd-desktop .sd-inspector-identity > svg {
+    display: none;
+  }
+  .sd-desktop .sd-inspector-identity h2 {
+    font-size: 17px;
+  }
+  .sd-desktop .sd-focus-actions button {
+    min-height: 35px;
+    padding: 7px 11px;
+    font-size: 11px;
+  }
+  .sd-desktop .sd-graph-footnote {
+    min-height: 24px;
+    font-size: 8px;
+    padding: 5px 4px 0;
+    gap: 7px;
+  }
+  .sd-desktop .sd-graph-footnote > span:last-child {
+    max-width: 42%;
+  }
+  .sd-desktop .sd-graph-empty {
+    padding: 108px 22px 55px;
+  }
+  .sd-desktop .sd-graph-art img {
+    max-height: 160px;
+    object-fit: contain;
+  }
+  .sd-desktop .sd-graph-state h2 {
+    font-size: 17px;
+  }
+  .sd-desktop .sd-graph-state p {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .sd-desktop .sd-environment {
+    display: none;
+  }
+}
+
+.sd-desktop .sd-node-decision_plan .sd-node-heading strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  line-height: 1.5;
+}
+.sd-desktop .sd-graph-inspector {
+  --liquid-tint: color-mix(in srgb, var(--sd-glass-tint) 82%, transparent);
+}
+
+.sd-desktop .sd-graph-canvas-bottom {
+  justify-content: flex-end;
+}
+.sd-desktop .sd-graph-layer-nav .sd-layer-help {
+  color: var(--sd-secondary);
+  border-left: 1px solid var(--sd-line);
+  border-radius: 0 7px 7px 0;
+  margin-left: 2px;
+  padding-left: 9px;
+}
+@media (max-width: 760px) {
+  .sd-desktop .sd-graph-layer-nav {
+    bottom: 85px;
+  }
+  .sd-desktop .sd-graph-legend {
+    bottom: 130px;
+  }
+  .sd-desktop .sd-theme-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sd-desktop .sd-graph-inspector {
+  backdrop-filter: none;
+}
+@media (max-width: 760px) {
+  .sd-desktop .sd-graph-toolbar {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .sd-desktop .sd-graph-tools {
+    width: auto;
+    flex: none;
+  }
+}
+
+.sd-desktop[data-theme="titanium"] .sd-liquid-material__finish {
+  border-color: rgb(218 236 249 / 0.16);
+  box-shadow:
+    inset 0 1px 0 rgb(231 244 252 / 0.22),
+    inset 0 -1px 0 rgb(7 18 27 / 0.15);
+}
+
+.sd-desktop button,
+.sd-desktop .sd-dialog button {
+  touch-action: manipulation;
+}

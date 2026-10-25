@@ -1,0 +1,14 @@
+{
+  "applicationImport": "NOT_IMPORTED; experiment artifacts are isolated from USER workspace sources",
+  "fieldTransformCoverage": "only SQL explicitly executed by this script is known; no external system field transformations inferred",
+  "notClaims": [
+    "not customer data",
+    "not real ROI",
+    "not GPU acceleration",
+    "not enterprise load capacity",
+    "no source-system write",
+    "no automatic customer extraction",
+    "decision plans are not executed decisions"
+  ],
+  "provenance": "DEMO"
+}

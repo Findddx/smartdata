@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import com.github.dockerjava.api.model.ExposedPort
+import com.github.dockerjava.api.model.PortBinding
+import com.github.dockerjava.api.model.Ports
 import org.awaitility.Awaitility.await
 import java.sql.Connection
 import java.sql.DriverManager
@@ -21,7 +23,9 @@ import tools.jackson.databind.json.JsonMapper
 
 /** A real, disposable database. There is deliberately no Docker-absent skip. */
 internal object PostgresIntegrationDatabase {
-    const val IMAGE = "postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+    // Build this exact delivery recipe before running integrationTest. A missing
+    // local image must fail; never pull an unrelated image with the same tag.
+    const val IMAGE = "localhost/smartdata-postgres:18.6-alpine3.24-r1"
     private val password = UUID.randomUUID().toString()
     private val ownershipLabel = UUID.randomUUID().toString()
     private val portable: PortablePostgres? by lazy { System.getProperty("smartdata.integration.portableMetadata")?.let(::readPortable) }
@@ -37,6 +41,13 @@ internal object PostgresIntegrationDatabase {
     val username: String get() = portable?.username ?: container.username
     val adminPassword: String get() = portable?.password ?: container.password
     val container: PostgreSQLContainer = PostgreSQLContainer(DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
+        .withImagePullPolicy { _ -> false }
+        .withCreateContainerCmdModifier { command ->
+            requireNotNull(command.hostConfig)
+                .withMemory(2L * 1024 * 1024 * 1024)
+                .withCpuPeriod(100_000L).withCpuQuota(200_000L)
+                .withPortBindings(PortBinding(Ports.Binding.bindIpAndPort("127.0.0.1", 0), ExposedPort.tcp(5432)))
+        }
         .withDatabaseName("smartdata_integration")
         .withUsername("migration_admin")
         .withPassword(password)
@@ -48,7 +59,18 @@ internal object PostgresIntegrationDatabase {
     fun start() {
         if (portable == null) {
             container.start()
+            val imageId = requireNotNull(container.currentContainerInfo.imageId)
+            val expectedImageId = System.getenv("SMARTDATA_TEST_POSTGRES_IMAGE_ID")
+            if (expectedImageId != null) {
+                check(expectedImageId.matches(Regex("sha256:[a-f0-9]{64}")) && imageId == expectedImageId) { "Integration container is not the delivery image built by this job" }
+            }
+            val labels = requireNotNull(requireNotNull(container.dockerClient.inspectImageCmd(imageId).exec().config).labels)
+            check(labels["io.smartdata.postgres.base"] == "postgres:18.6-alpine3.24@sha256:898c60cb390d1085bc97bdd6a1ae968757421df394b071848b52b1c09c89d6a5" &&
+                labels["io.smartdata.gosu.source-commit"] == "6456aaa0f3c854d199d0f037f068eb97515b7513" &&
+                labels["io.smartdata.gosu.go-version"] == "1.27.3" && labels["io.smartdata.brotli.version"] == "1.2.1-r0") { "Integration image is missing the frozen PostgreSQL security patch bindings" }
             println("POSTGRESQL_INTEGRATION_PROVIDER=TESTCONTAINERS_POSTGRES_18_6")
+            println("POSTGRESQL_INTEGRATION_DISTRIBUTION=SMARTDATA_ALPINE_3_24_R1")
+            println("POSTGRESQL_INTEGRATION_IMAGE_ID=$imageId")
         } else {
             check(!System.getenv("CI").equals("true", ignoreCase = true)) { "CI must use real Testcontainers; portable mode is local development only" }
             assertOwnedContainer()

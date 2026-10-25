@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "createdOn": "2026-10-25",
+  "generator": "built-in image_gen",
+  "status": "DRAFT_PENDING_USER_DESIGN_ACCEPTANCE",
+  "assets": [
+    {
+      "file": "strata-study-v1.webp",
+      "purpose": "Quiet welcome or empty state; never a background behind evidence or live graph text",
+      "original": {"format": "PNG", "width": 1536, "height": 1024, "bytes": 3208160, "sha256": "26dcf07af302a188e64a051be42e0a1cd2c91ab20c2639c0544e067ba3cbf11d", "retainedPrivately": true},
+      "delivery": {"format": "WebP", "bytes": 365312, "sha256": "cedbcdc40d1e2ad3ffae5f782ca6ea1342e999ae1e7c97537cd77133b82ca5e0", "processing": "Format compression only; original dimensions and composition retained; FFmpeg libwebp quality 88"},
+      "prompt": "Use case: stylized-concept. Asset type: original abstract artwork for quiet welcome and empty states in a serious data collaboration product. Create a museum-quality minimal geometric charcoal and dry-pastel study on warm cotton paper: a few layered planes fold gently into one shared passage, with delicate graphite paths and soft raking gallery light. Generous untouched negative space. Landscape composition with a small disciplined sculptural subject, elegant asymmetry. Palette is chalk ivory, graphite, a little muted Prussian blue and one fine cinnabar red accent. Tactile paper relief, subtle impressionistic softness, quiet, intelligent, elegant. No text, letters, logos, UI, charts, nodes, numbers, watermark, flowers or radial rosettes. No purple, blue-purple neon, cyberpunk, glossy plastic, or bright gradients. This is a tasteful artist's study beside productive work, not an advertising hero."
+    },
+    {
+      "file": "observation-study-v1.webp",
+      "purpose": "Optional guide or secondary empty-state illustration; not a data diagram",
+      "original": {"format": "PNG", "width": 1254, "height": 1254, "bytes": 2959087, "sha256": "e605ac8f6e6668569a1875ab2358c5e9b9e8814e0e56908ecef6276c3e05dcb0", "retainedPrivately": true},
+      "delivery": {"format": "WebP", "bytes": 278082, "sha256": "dc317763683634181e0245b45a2d5ff2f5160ce913023174e2ca6eca3664b57f", "processing": "Format compression only; original dimensions and composition retained; FFmpeg libwebp quality 88"},
+      "prompt": "Use case: stylized-concept. Asset type: original square abstract illustration for the quiet empty states and learning guide of SmartData. Primary request: an exquisite, sparse charcoal and muted-pastel geometric study on warm ivory cotton paper, suggesting careful observation and relationships without drawing a literal diagram. A small asymmetric arrangement of a single open graphite arc, two overlapping flat planes and a very thin cinnabar accent; one plane in restrained Prussian blue, the other soft mineral white. Hand-drawn construction lines, paper fibers and restrained impressionistic soft light. Mostly untouched negative space, editorial and gallery-like, sophisticated, precise but humane. No typography, no logo, no UI, no graph nodes, no arrows, no numbers, no radial flower, no rosette, no neon, no purple, no gradients, no shiny plastic, no futuristic sci-fi ornament. It must feel like an artist's small pencil study, not a generic AI SaaS graphic."
+    }
+  ],
+  "failureHistory": ["The initial built-in request returned HTTP 403; retry through the same built-in tool succeeded. No alternate API provider or CLI fallback was used."],
+  "brandSvgOrigin": "SmartDataMark and SmartDataGlyph are separately written native SVG; they are not image-generator output"
+}

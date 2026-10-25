@@ -5,3 +5,10 @@ This product includes software developed by third parties. A machine-readable
 dependency inventory is produced as a CycloneDX SBOM during release builds.
 Reference projects listed in research-lock.yaml are design references only and
 are not incorporated into the distributed runtime unless separately declared.
+
+The console incorporates a modified optical core from gentpan/liquidglass,
+commit 068ad226f53e1ca62d857f78bdc32f58f3c5fce7.
+Copyright (c) 2026 gentpan. Licensed under the MIT License.
+Full license: console/src/materials/vendor/LICENSE.gentpan.
+Built console distribution: third-party-licenses/gentpan-liquidglass.txt.
+Scope, original fingerprint and local modifications: console/src/materials/README.md.

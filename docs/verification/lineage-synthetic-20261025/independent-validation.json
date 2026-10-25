@@ -1,0 +1,12 @@
+{
+  "assertions": [
+    "every customer order count and net amount equals independent input aggregation",
+    "daily total count/net/late equals independent inputs",
+    "SQLite integrity_check ok",
+    "no orphan customers",
+    "refund does not exceed paid"
+  ],
+  "method": "independent streaming CSV Python integer aggregation versus SQLite materialized SQL",
+  "rawInputsReadOnlyDuringValidation": true,
+  "status": "PASSED"
+}

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SmartData local workspace API
-  version: 1.1.0
+  version: 1.2.0
   license: { name: Apache-2.0, identifier: Apache-2.0 }
   description: >-
     本地工作区的只读来源接入、数据盘点、证据和人员协作契约。仅在显式 local profile
@@ -20,6 +20,12 @@ tags:
   - name: Workspace
     description: 当前租户的来源、采样证据和协作进度。
 paths:
+  /workspace/lineage:
+    $ref: './workspace-lineage-v1.yaml#/paths/~1workspace~1lineage'
+  /workspace/lineage/sources/{sourceId}/assets/{assetId}/fields:
+    $ref: './workspace-lineage-v1.yaml#/paths/~1workspace~1lineage~1sources~1{sourceId}~1assets~1{assetId}~1fields'
+  /workspace/lineage/mappings:
+    $ref: './workspace-lineage-v1.yaml#/paths/~1workspace~1lineage~1mappings'
   /workspace:
     get:
       tags: [Workspace]

@@ -29,6 +29,7 @@ wrapper-bootstrap/
 # Local state, credentials, backups and captured customer data.
 /runtime-data/
 /local-data/
+/experiments/**/run-*/
 /backups/
 /secrets/
 /credentials/
