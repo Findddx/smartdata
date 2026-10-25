@@ -110,7 +110,7 @@ jobs:
           if not xml_root.tag.endswith("}bom"):
               raise SystemExit("unexpected CycloneDX XML root")
           PY
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smartdata-cyclonedx-sbom
           path: |
@@ -119,7 +119,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Preserve JVM JUnit and HTML evidence
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
         with:
           name: smartdata-jvm-tests
@@ -191,7 +191,7 @@ jobs:
               raise SystemExit(f"PostgreSQL checks must execute without failures or skips: {totals}")
           print(f"Real PostgreSQL checks passed: {totals}")
           PY
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
         with:
           name: smartdata-postgresql18-integration
@@ -201,7 +201,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Preserve PostgreSQL image scan evidence
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
         with:
           name: smartdata-postgresql-image-scan
@@ -246,7 +246,7 @@ jobs:
             --descriptor_set_out="$RUNNER_TEMP/smartdata-connector-v1.pb" \
             connector/v1/connector.proto
           test -s "$RUNNER_TEMP/smartdata-connector-v1.pb"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smartdata-connector-v1-descriptor
           path: ${{ runner.temp }}/smartdata-connector-v1.pb
@@ -421,7 +421,7 @@ jobs:
             --report-format=json --report-path=/reports/gitleaks.json
       - name: Preserve redacted secret scan evidence
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smartdata-gitleaks-redacted
           path: ${{ runner.temp }}/gitleaks.json
