@@ -1,0 +1,229 @@
+# LOCAL DEMO ONLY. Ports are loopback-bound, networks are private, and every
+# credential must be supplied by the operator. Do not promote this topology to
+# production; use the Helm chart with managed dependencies, TLS/mTLS and an
+# external secret manager.
+name: smartdata-demo
+
+x-service-hardening: &service-hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  networks:
+    - smartdata-internal
+
+services:
+  postgres:
+    <<: *service-hardening
+    image: postgres:18.4-alpine3.22
+    environment:
+      POSTGRES_DB: smartdata
+      POSTGRES_USER: smartdata_demo
+      POSTGRES_PASSWORD: ${SMARTDATA_DEMO_DB_PASSWORD:?set SMARTDATA_DEMO_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 moved its declared volume to this parent directory.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartdata_demo -d smartdata"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  kafka:
+    <<: *service-hardening
+    image: apache/kafka:4.2.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,HOST://localhost:${SMARTDATA_DEMO_KAFKA_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_KAFKA_PORT:-29092}:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  temporal:
+    <<: *service-hardening
+    # auto-setup is a local-demo convenience image; 1.29.7 is the newest
+    # published immutable tag. Production uses separately managed services.
+    image: temporalio/auto-setup:1.29.7
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: smartdata_demo
+      POSTGRES_PWD: ${SMARTDATA_DEMO_DB_PASSWORD:?set SMARTDATA_DEMO_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_TEMPORAL_PORT:-7233}:7233"
+
+  temporal-ui:
+    <<: *service-hardening
+    image: temporalio/ui:2.53.3
+    profiles: ["observability"]
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:${SMARTDATA_DEMO_CONSOLE_PORT:-4173}
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_TEMPORAL_UI_PORT:-8233}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  qdrant:
+    <<: *service-hardening
+    image: qdrant/qdrant:v1.19.1
+    environment:
+      QDRANT__SERVICE__API_KEY: ${SMARTDATA_DEMO_QDRANT_API_KEY:?set SMARTDATA_DEMO_QDRANT_API_KEY}
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_QDRANT_HTTP_PORT:-6333}:6333"
+      - "127.0.0.1:${SMARTDATA_DEMO_QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  opa:
+    <<: *service-hardening
+    image: openpolicyagent/opa:1.20.2-static
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-format=json", "--log-level=info", "/policies"]
+    user: "65532:65532"
+    read_only: true
+    cap_drop: ["ALL"]
+    volumes:
+      - ../policy/smartdata:/policies:ro
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_OPA_PORT:-8181}:8181"
+
+  openfga-migrate:
+    image: openfga/openfga:v1.19.0
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - smartdata-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["migrate"]
+    environment: &openfga-environment
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://smartdata_demo:${SMARTDATA_DEMO_DB_PASSWORD:?set SMARTDATA_DEMO_DB_PASSWORD}@postgres:5432/smartdata?sslmode=disable
+      OPENFGA_AUTHN_METHOD: preshared
+      OPENFGA_AUTHN_PRESHARED_KEYS: ${SMARTDATA_DEMO_OPENFGA_KEY:?set SMARTDATA_DEMO_OPENFGA_KEY}
+
+  openfga:
+    <<: *service-hardening
+    image: openfga/openfga:v1.19.0
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    command: ["run"]
+    environment: *openfga-environment
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_OPENFGA_HTTP_PORT:-8088}:8080"
+      - "127.0.0.1:${SMARTDATA_DEMO_OPENFGA_GRPC_PORT:-8089}:8081"
+
+  runtime-api:
+    <<: *service-hardening
+    profiles: ["apps"]
+    image: smartdata/runtime-api:local
+    build:
+      context: ../..
+      dockerfile: deploy/images/jvm-service.Dockerfile
+      args:
+        MODULE: runtime-api
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Container-internal access; published host port remains loopback-only.
+      SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_RUNTIME_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  workflow-worker:
+    <<: *service-hardening
+    profiles: ["apps"]
+    image: smartdata/workflow-worker:local
+    build:
+      context: ../..
+      dockerfile: deploy/images/jvm-service.Dockerfile
+      args:
+        MODULE: workflow-worker
+    depends_on:
+      - temporal
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SMARTDATA_TEMPORAL_ENABLED: "true"
+      SMARTDATA_TEMPORAL_TARGET: temporal:7233
+      SMARTDATA_TEMPORAL_NAMESPACE: default
+      SMARTDATA_TEMPORAL_TASK_QUEUE: smartdata-fulfillment-v1
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  mcp-bridge:
+    <<: *service-hardening
+    profiles: ["apps"]
+    image: smartdata/mcp-bridge:local
+    build:
+      context: ../../mcp-bridge
+      dockerfile: Dockerfile
+    depends_on:
+      - runtime-api
+    environment:
+      SMARTDATA_MCP_LISTEN_ADDR: 0.0.0.0:8082
+      SMARTDATA_MCP_HEALTH_LISTEN_ADDR: 0.0.0.0:8083
+      SMARTDATA_RUNTIME_BASE_URL: http://runtime-api:8080
+      SMARTDATA_RUNTIME_ALLOWED_HOSTS: runtime-api
+      SMARTDATA_MCP_ALLOW_INSECURE_UPSTREAM: "true"
+      SMARTDATA_MCP_ALLOW_DEMO_AUTH: "true"
+      SMARTDATA_MCP_ALLOWED_DEMO_ACTORS: order-specialist,warehouse-approver,sales-owner,auditor,admin
+      SMARTDATA_LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_MCP_PORT:-8082}:8082"
+      - "127.0.0.1:${SMARTDATA_DEMO_MCP_HEALTH_PORT:-8083}:8083"
+    read_only: true
+
+  console:
+    <<: *service-hardening
+    profiles: ["apps"]
+    image: smartdata/console:local
+    build:
+      context: ../..
+      dockerfile: deploy/images/console-demo.Dockerfile
+      args:
+        # Compile the demo-only actor switch into this local image. The normal
+        # production console build leaves VITE_DEMO_AUTH unset/false.
+        VITE_DEMO_AUTH: "true"
+    depends_on:
+      - runtime-api
+    ports:
+      - "127.0.0.1:${SMARTDATA_DEMO_CONSOLE_PORT:-4173}:4173"
+    read_only: true
+    tmpfs:
+      - /tmp
+
+networks:
+  smartdata-internal:
+    internal: true
+
+volumes:
+  postgres-data:
+  kafka-data:
+  qdrant-data:

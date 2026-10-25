@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdata.fullname" . }}-runtime-api
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-api
+spec:
+  replicas: {{ .Values.runtimeApi.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "smartdata.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: runtime-api
+  template:
+    metadata:
+      labels:
+        {{- include "smartdata.labels" . | nindent 8 }}
+        app.kubernetes.io/component: runtime-api
+    spec:
+      serviceAccountName: {{ include "smartdata.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: runtime-api
+          image: "{{ .Values.runtimeApi.image.repository }}{{ if .Values.runtimeApi.image.digest }}@{{ .Values.runtimeApi.image.digest }}{{ else }}:{{ .Values.runtimeApi.image.tag }}{{ end }}"
+          imagePullPolicy: {{ .Values.runtimeApi.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            # The production chart must never activate demo identity or in-memory adapters.
+            - {name: SPRING_PROFILES_ACTIVE, value: "production"}
+          envFrom:
+            - configMapRef: {name: {{ include "smartdata.fullname" . }}-config}
+            - secretRef: {name: {{ required "runtimeApi.existingSecret is required" .Values.runtimeApi.existingSecret }}}
+          ports:
+            - {name: http, containerPort: {{ .Values.runtimeApi.port }}, protocol: TCP}
+          {{- if .Values.runtimeApi.probes.enabled }}
+          livenessProbe:
+            httpGet: {path: {{ .Values.runtimeApi.probes.livenessPath }}, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: {{ .Values.runtimeApi.probes.readinessPath }}, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          {{- end }}
+          resources:
+            {{- toYaml .Values.runtimeApi.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 256Mi}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdata.fullname" . }}-runtime-api
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "smartdata.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runtime-api
+  ports:
+    - {name: http, port: {{ .Values.runtimeApi.port }}, targetPort: http, protocol: TCP}

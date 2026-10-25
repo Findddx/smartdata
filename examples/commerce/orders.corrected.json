@@ -1,0 +1,5 @@
+[
+  {"order_id":"EXAMPLE-1001","customer_id":"C-01","amount":299,"channel":"store","updated_at":"2026-10-25T09:00:00Z"},
+  {"order_id":"EXAMPLE-1002","customer_id":"C-02","amount":199,"channel":"web","updated_at":"2026-10-25T09:00:00Z"},
+  {"order_id":"EXAMPLE-1003","customer_id":"C-03","amount":128,"channel":"web","updated_at":"2026-10-25T09:00:00Z"}
+]

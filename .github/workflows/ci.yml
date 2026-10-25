@@ -1,0 +1,308 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jvm:
+    name: JVM tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: "25.0.4.1+1"
+          cache: gradle
+      - name: Test JVM modules and generate aggregate CycloneDX SBOM
+        run: ./gradlew --no-daemon --stacktrace test cyclonedxBom --write-locks
+      - name: Reject stale dependency locks
+        shell: bash
+        run: |
+          changes="$(git status --porcelain --untracked-files=all -- settings-gradle.lockfile ':(glob)**/gradle.lockfile')"
+          if [[ -n "$changes" ]]; then
+            echo "Dependency lock files changed during resolution:" >&2
+            echo "$changes" >&2
+            exit 1
+          fi
+      - name: Validate CycloneDX outputs
+        run: |
+          python3 - <<'PY'
+          import json
+          import tomllib
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          json_path = Path("build/reports/sbom/smartdata.cdx.json")
+          xml_path = Path("build/reports/sbom/smartdata.cdx.xml")
+          if (
+              not json_path.is_file()
+              or not xml_path.is_file()
+              or json_path.stat().st_size == 0
+              or xml_path.stat().st_size == 0
+          ):
+              raise SystemExit("CycloneDX JSON and XML outputs are both required")
+          document = json.loads(json_path.read_text(encoding="utf-8"))
+          if document.get("bomFormat") != "CycloneDX":
+              raise SystemExit("unexpected SBOM format")
+          if document.get("specVersion") != "1.6":
+              raise SystemExit("CycloneDX 1.6 is required")
+          components = document.get("components", [])
+          if not components:
+              raise SystemExit("aggregate SBOM contains no components")
+          if any(not item.get("name") or not item.get("version") or not item.get("bom-ref") for item in components):
+              raise SystemExit("every SBOM component requires name, version and bom-ref")
+          component_refs = [item["bom-ref"] for item in components]
+          if len(component_refs) != len(set(component_refs)):
+              raise SystemExit("duplicate component bom-ref in aggregate SBOM")
+          jackson_version = tomllib.loads(Path("gradle/libs.versions.toml").read_text(encoding="utf-8"))["versions"]["jackson"]
+          jackson3 = [item for item in components if item.get("group", "").startswith("tools.jackson")]
+          if not jackson3 or any(item["version"] != jackson_version for item in jackson3):
+              raise SystemExit(f"all tools.jackson modules must use {jackson_version}")
+          # The official OpenAI SDK uses the separate com.fasterxml Jackson 2
+          # namespace; it does not replace the application's Jackson 3 DTO codec.
+          root_ref = document.get("metadata", {}).get("component", {}).get("bom-ref")
+          known_refs = set(component_refs)
+          if root_ref:
+              known_refs.add(root_ref)
+          graph_refs = {
+              ref
+              for edge in document.get("dependencies", [])
+              for ref in [edge.get("ref"), *edge.get("dependsOn", [])]
+              if ref
+          }
+          if graph_refs - known_refs:
+              raise SystemExit("SBOM dependency graph contains unknown bom-ref values")
+          xml_root = ElementTree.parse(xml_path).getroot()
+          if not xml_root.tag.endswith("}bom"):
+              raise SystemExit("unexpected CycloneDX XML root")
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: smartdata-cyclonedx-sbom
+          path: |
+            build/reports/sbom/smartdata.cdx.json
+            build/reports/sbom/smartdata.cdx.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  contracts:
+    name: Public contract validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.8.0"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - name: Validate OpenAPI and event JSON Schema
+        run: |
+          npm ci --ignore-scripts
+          npm run validate
+          npm audit --audit-level=high
+      - name: Download verified protoc 35.0
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/protoc-35.0-linux-x86_64.zip"
+          curl --fail --location --silent --show-error --retry 3 --proto '=https' --tlsv1.2 \
+            --output "$archive" \
+            https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-linux-x86_64.zip
+          echo "a45cda0989c17dd950db55f6fbe1e5814c50fda08e87aa422980ac1f89dddbbc  $archive" | sha256sum --check --strict
+          unzip -q "$archive" -d "$RUNNER_TEMP/protoc-35.0"
+      - name: Compile connector protocol to descriptor set
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/protoc-35.0/bin/protoc" \
+            --proto_path=connector \
+            --include_imports \
+            --descriptor_set_out="$RUNNER_TEMP/smartdata-connector-v1.pb" \
+            connector/v1/connector.proto
+          test -s "$RUNNER_TEMP/smartdata-connector-v1.pb"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: smartdata-connector-v1-descriptor
+          path: ${{ runner.temp }}/smartdata-connector-v1.pb
+          if-no-files-found: error
+          retention-days: 30
+
+  console:
+    name: Console test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.8.0"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  workspace-http-smoke:
+    name: Workspace HTTP contracts and collaboration smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SMARTDATA_WORKSPACE_SMOKE_URL: http://127.0.0.1:18080
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: "25.0.4.1+1"
+          cache: gradle
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.8.0"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - name: Build runtime and install locked contract validators
+        run: |
+          ./gradlew --no-daemon --no-parallel --max-workers=2 :runtime-api:bootJar
+          npm ci --prefix contracts --ignore-scripts
+      - name: Exercise a disposable local workspace over HTTP
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path="$(find runtime-api/build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' -print -quit)"
+          test -n "$jar_path"
+          workspace_dir="$(mktemp -d "$RUNNER_TEMP/smartdata-workspace-smoke.XXXXXX")"
+          runtime_log="$RUNNER_TEMP/smartdata-workspace-smoke.log"
+          start_runtime() {
+            java -Xmx512m -jar "$jar_path" \
+              --spring.profiles.active=local \
+              --server.address=127.0.0.1 \
+              --server.port=18080 \
+              --smartdata.workspace.storage-dir="$workspace_dir" \
+              --smartdata.workspace.reasoning.mode=RULES \
+              >> "$runtime_log" 2>&1 &
+            runtime_pid=$!
+          }
+          await_ready() {
+            local ready=false
+            for attempt in {1..60}; do
+              if curl --fail --silent --max-time 2 http://127.0.0.1:18080/actuator/health/readiness > /dev/null; then
+                ready=true
+                break
+              fi
+              if ! kill -0 "$runtime_pid" 2>/dev/null; then
+                cat "$runtime_log"
+                return 1
+              fi
+              sleep 1
+            done
+            if [[ "$ready" != true ]]; then
+              cat "$runtime_log"
+              return 1
+            fi
+          }
+          start_runtime
+          trap 'kill "$runtime_pid" 2>/dev/null || true; wait "$runtime_pid" 2>/dev/null || true' EXIT
+          await_ready
+          npm run smoke:workspace --prefix contracts
+          kill "$runtime_pid"
+          wait "$runtime_pid" || true
+          start_runtime
+          await_ready
+          npm run smoke:workspace --prefix contracts -- --verify-restored
+
+  mcp-bridge:
+    name: MCP bridge test, race and vulnerability scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mcp-bridge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: mcp-bridge/go.sum
+      - name: Enforce formatting
+        run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+      - name: Check reachable Go vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          govulncheck ./...
+
+  deployment:
+    name: Deployment and policy validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SMARTDATA_DEMO_DB_PASSWORD: 0123456789abcdef0123456789abcdef
+      SMARTDATA_DEMO_QDRANT_API_KEY: 0123456789abcdef0123456789abcdef
+      SMARTDATA_DEMO_OPENFGA_KEY: 0123456789abcdef0123456789abcdef
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.2.4
+      - name: Lint and render Helm chart
+        run: |
+          helm lint deploy/helm/smartdata --strict
+          helm template ci-default deploy/helm/smartdata > "$RUNNER_TEMP/smartdata-default.yaml"
+          helm template ci-all deploy/helm/smartdata --set mcpBridge.enabled=true --set workflowWorker.enabled=true --set workflowWorker.temporal.enabled=true > "$RUNNER_TEMP/smartdata-all.yaml"
+          test "$(grep -c 'name: SPRING_PROFILES_ACTIVE' "$RUNNER_TEMP/smartdata-all.yaml")" -eq 2
+          test "$(grep -c 'value: \"production\"' "$RUNNER_TEMP/smartdata-all.yaml")" -ge 2
+          if helm template ci-invalid deploy/helm/smartdata \
+            --set workflowWorker.enabled=true \
+            --set runtimeApi.existingSecret=shared-secret \
+            --set workflowWorker.existingSecret=shared-secret; then
+            echo "chart accepted a shared Runtime/Worker secret" >&2
+            exit 1
+          fi
+      - name: Validate local demo Compose
+        run: docker compose --profile apps --profile observability -f deploy/compose/compose.demo.yaml config --quiet
+      - name: Test fail-closed OPA policy
+        run: docker run --rm -v "$PWD/deploy/policy/smartdata:/policy:ro" openpolicyagent/opa:1.20.2-static test /policy
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, SSPL-1.0
+
+  repository-security:
+    name: Secret and repository scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Scan committed history for secrets
+        run: docker run --rm -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=/repo --redact --no-banner
+      - name: Scan dependencies and configuration
+        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.74.0 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 /repo

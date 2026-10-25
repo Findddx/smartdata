@@ -1,0 +1,77 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "smartdata.fullname" . }}-default-deny
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "smartdata.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: smartdata
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 8082}
+        - {protocol: TCP, port: 8083}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: smartdata
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 8443}
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 6334}
+        - {protocol: TCP, port: 7233}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 8081}
+        - {protocol: TCP, port: 8181}
+        - {protocol: TCP, port: 9092}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.dependencyNamespace | quote }}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 6334}
+        - {protocol: TCP, port: 7233}
+        - {protocol: TCP, port: 8081}
+        - {protocol: TCP, port: 8181}
+        - {protocol: TCP, port: 9092}
+    {{- range .Values.networkPolicy.egressCIDRs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 8443}
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 6334}
+        - {protocol: TCP, port: 7233}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 8081}
+        - {protocol: TCP, port: 8181}
+        - {protocol: TCP, port: 9092}
+    {{- end }}
+{{- end }}

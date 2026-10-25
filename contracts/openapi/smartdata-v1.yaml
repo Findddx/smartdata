@@ -1,0 +1,619 @@
+openapi: 3.1.0
+info:
+  title: SmartData Runtime API
+  version: 1.0.0
+  license: { name: Apache-2.0, identifier: Apache-2.0 }
+  description: >-
+    订单履约异常的证据、建议、审批、执行与独立验证契约。调用者身份、租户与角色
+    只能来自服务端验证的认证上下文；任何写动作都不能绕过 ActionRequest。
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /cases:
+    get:
+      summary: 查询异常案件队列
+      operationId: listCases
+      parameters:
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        '200':
+          description: 授权租户内的案件页
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CasePage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /cases/{caseId}:
+    get:
+      summary: 查询案件详情
+      operationId: getCase
+      parameters: [ { $ref: '#/components/parameters/CaseId' } ]
+      responses:
+        '200':
+          description: 带双时态主张与知识缺口的案件
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExceptionCase' }
+        default: { $ref: '#/components/responses/Problem' }
+  /cases/{caseId}/evidence:
+    get:
+      summary: 查询案件证据引用
+      operationId: listCaseEvidence
+      parameters: [ { $ref: '#/components/parameters/CaseId' } ]
+      responses:
+        '200':
+          description: 证据引用；正文仍在数据面对象存储
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/EvidenceRef' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /cases/{caseId}/recommendations:
+    post:
+      summary: 生成类型化处置建议
+      operationId: createRecommendation
+      parameters:
+        - { $ref: '#/components/parameters/CaseId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses:
+        '200':
+          description: 绑定证据、案件版本和模型版本的类型化建议
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recommendation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /recommendations/{recommendationId}:
+    get:
+      summary: 查询处置建议
+      operationId: getRecommendation
+      parameters:
+        - name: recommendationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 类型化建议
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recommendation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /action-requests:
+    post:
+      summary: 创建待审批动作请求
+      operationId: createActionRequest
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [recommendationId, expectedStateVersion]
+              properties:
+                recommendationId: { type: string, format: uuid }
+                expectedStateVersion: { type: integer, format: int64, minimum: 0 }
+      responses:
+        '201':
+          description: 已通过策略并等待人工审批的动作请求
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionRequest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /action-requests/{actionRequestId}:
+    get:
+      summary: 查询动作请求
+      operationId: getActionRequest
+      parameters: [ { $ref: '#/components/parameters/ActionRequestId' } ]
+      responses:
+        '200':
+          description: 动作请求
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionRequest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /action-requests/{actionRequestId}/receipt:
+    get:
+      summary: 查询外部动作回执
+      operationId: getActionReceipt
+      parameters: [ { $ref: '#/components/parameters/ActionRequestId' } ]
+      responses:
+        '200':
+          description: 外部请求与回执账本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionReceipt' }
+        default: { $ref: '#/components/responses/Problem' }
+  /approvals/{actionRequestId}:
+    post:
+      summary: 审批动作请求
+      operationId: approveActionRequest
+      parameters:
+        - { $ref: '#/components/parameters/ActionRequestId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/ExpectedVersion' }
+      responses:
+        '200':
+          description: 审批结果；申请人与审批人必须分离
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionRequest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /approvals/{actionRequestId}/reject:
+    post:
+      summary: 驳回动作请求
+      operationId: rejectActionRequest
+      parameters:
+        - { $ref: '#/components/parameters/ActionRequestId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/ExpectedVersion' }
+      responses:
+        '200':
+          description: 驳回结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionRequest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /action-requests/{actionRequestId}/execute:
+    post:
+      summary: 执行已审批动作
+      operationId: executeApprovedAction
+      description: 只能执行已审批动作；外部结果不确定时禁止盲目重试。
+      parameters:
+        - { $ref: '#/components/parameters/ActionRequestId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/ExpectedVersion' }
+      responses:
+        '200':
+          description: 执行结果仍未代表业务成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionView' }
+        default: { $ref: '#/components/responses/Problem' }
+  /verifications/{actionRequestId}:
+    get:
+      summary: 查询独立验证结果
+      operationId: getVerification
+      parameters:
+        - { $ref: '#/components/parameters/ActionRequestId' }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string, enum: [ACTION, COMPENSATION], default: ACTION }
+      responses:
+        '200':
+          description: 独立验证结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationResult' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      summary: 触发独立回读验证
+      operationId: verifyActionOutcome
+      parameters:
+        - { $ref: '#/components/parameters/ActionRequestId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/VerificationVersions' }
+      responses:
+        '200':
+          description: 独立回读后的闭环判定
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationView' }
+        default: { $ref: '#/components/responses/Problem' }
+  /memory-candidates:
+    get:
+      summary: 查询经验候选
+      operationId: listMemoryCandidates
+      responses:
+        '200':
+          description: 尚未影响共享检索的经验候选
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/MemoryAsset' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /memory-candidates/{memoryId}/review:
+    post:
+      summary: 审核经验候选
+      operationId: reviewMemoryCandidate
+      parameters:
+        - name: memoryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, expectedStateVersion]
+              properties:
+                decision: { type: string, enum: [APPROVE, REVOKE] }
+                expectedStateVersion: { type: integer, format: int64, minimum: 0 }
+      responses:
+        '200':
+          description: 人工发布或撤销后的记忆资产
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemoryAsset' }
+        default: { $ref: '#/components/responses/Problem' }
+  /domain-packs:
+    get:
+      summary: 查询已激活领域包
+      description: 仅审计员或平台管理员可读取治理配置元数据。
+      operationId: listDomainPacks
+      responses:
+        '200':
+          description: 激活的领域包及公共动作
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DomainPackView' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /audit/{aggregateId}:
+    get:
+      summary: 查询聚合审计账本
+      operationId: getAuditTrail
+      parameters:
+        - name: aggregateId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 经资源权限过滤的不可变审计事实
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AuditFact' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /cases/{caseId}/timeline:
+    get:
+      summary: 查询案件动作与验证时间线
+      operationId: getCaseTimeline
+      parameters:
+        - { $ref: '#/components/parameters/CaseId' }
+      responses:
+        '200':
+          description: 经案件和证据权限过滤的审计事实
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AuditFact' } }
+        default: { $ref: '#/components/responses/Problem' }
+  /evaluations/health:
+    get:
+      summary: 查询当前评测基线状态
+      description: 仅审计员或平台管理员可读取评测治理元数据。
+      operationId: getEvaluationHealth
+      responses:
+        '200':
+          description: 非敏感、非真实 ROI 的确定性仿真评测元数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvaluationHealth' }
+        default: { $ref: '#/components/responses/Problem' }
+  /runs/{runId}/events:
+    get:
+      summary: 订阅案件运行事件
+      operationId: subscribeRunEvents
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 授权案件的运行事件流
+          content:
+            text/event-stream:
+              schema: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ActionRequestId:
+      name: actionRequestId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 租户范围内的命令幂等键；同键不同请求返回 409。
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  requestBodies:
+    ExpectedVersion:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [expectedStateVersion]
+            properties:
+              expectedStateVersion: { type: integer, format: int64, minimum: 0 }
+    VerificationVersions:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [expectedActionStateVersion, expectedCaseStateVersion]
+            properties:
+              expectedActionStateVersion: { type: integer, format: int64, minimum: 0 }
+              expectedCaseStateVersion: { type: integer, format: int64, minimum: 0 }
+  responses:
+    Problem:
+      description: RFC 9457 问题详情
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    CasePage:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CaseSummary' } }
+        total: { type: integer, minimum: 0 }
+        offset: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1 }
+    CaseSummary:
+      type: object
+      required: [id, orderId, titleZh, priority, status, scenarioKinds, gapCount, stateVersion, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        orderId: { type: string }
+        titleZh: { type: string }
+        priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        status: { type: string, enum: [OPEN, AWAITING_APPROVAL, IN_PROGRESS, VERIFIED_CLOSED, MANUAL_INTERVENTION] }
+        scenarioKinds: { type: array, uniqueItems: true, items: { type: string } }
+        gapCount: { type: integer, minimum: 0 }
+        stateVersion: { type: integer, format: int64, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
+    ExceptionCase:
+      type: object
+      required: [id, tenantId, orderId, titleZh, priority, status, scenarioKinds, claims, knowledgeGaps, domainVersion, policyVersion, stateVersion, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        orderId: { type: string }
+        titleZh: { type: string }
+        priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        status: { type: string, enum: [OPEN, AWAITING_APPROVAL, IN_PROGRESS, VERIFIED_CLOSED, MANUAL_INTERVENTION] }
+        scenarioKinds: { type: array, uniqueItems: true, items: { type: string } }
+        claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+        knowledgeGaps: { type: array, items: { $ref: '#/components/schemas/KnowledgeGap' } }
+        domainVersion: { type: string }
+        policyVersion: { type: string }
+        stateVersion: { type: integer, format: int64, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EvidenceRef:
+      type: object
+      required: [id, tenantId, sourceSystem, sourceRecordId, contentHash, observedAt, recordedAt, classification, aclRef]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        sourceSystem: { type: string }
+        sourceRecordId: { type: string }
+        contentHash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        observedAt: { type: string, format: date-time }
+        recordedAt: { type: string, format: date-time }
+        uri: { type: [string, 'null'], format: uri }
+        classification: { type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED] }
+        aclRef: { type: string }
+    Claim:
+      type: object
+      required: [id, tenantId, subjectType, subjectId, predicate, value, evidenceRefs, validFrom, recordedAt, classification, aclRef, confidence, status]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        subjectType: { type: string }
+        subjectId: { type: string }
+        predicate: { type: string }
+        value: { type: string }
+        evidenceRefs: { type: array, minItems: 1, items: { $ref: '#/components/schemas/EvidenceRef' } }
+        validFrom: { type: string, format: date-time }
+        validTo: { type: [string, 'null'], format: date-time }
+        recordedAt: { type: string, format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        classification: { type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED] }
+        aclRef: { type: string }
+        derivationVersion: { type: [string, 'null'] }
+        modelVersion: { type: [string, 'null'] }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        status: { type: string, enum: [ASSERTED, INFERRED, CONFLICTED, REVOKED] }
+    KnowledgeGap:
+      type: object
+      required: [id, tenantId, kind, code, subjectId, descriptionZh, affectedDecision, requiredObservation, classification, aclRef]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        kind: { type: string, enum: [UNKNOWN, CONFLICTING, STALE] }
+        code: { type: string, pattern: '^[A-Z][A-Z0-9_]{1,79}$' }
+        subjectId: { type: string }
+        descriptionZh: { type: string }
+        affectedDecision: { type: string }
+        requiredObservation: { type: string }
+        dueAt: { type: [string, 'null'], format: date-time }
+        classification: { type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED] }
+        aclRef: { type: string }
+    Recommendation:
+      type: object
+      required: [id, tenantId, caseId, caseStateVersion, actionDefinitionId, actionInput, rationaleZh, evidenceIds, createdAt, domainVersion, policyVersion, modelVersion]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        caseId: { type: string, format: uuid }
+        caseStateVersion: { type: integer, format: int64 }
+        actionDefinitionId: { type: string, enum: [request_stock_recount, reserve_substitute_inventory] }
+        actionInput: { type: object }
+        rationaleZh: { type: string }
+        evidenceIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        createdAt: { type: string, format: date-time }
+        domainVersion: { type: string }
+        policyVersion: { type: string }
+        modelVersion: { type: string }
+    ActionRequest:
+      type: object
+      required: [id, tenantId, caseId, recommendationId, definitionId, definitionVersion, input, evidenceIds, requestedBy, idempotencyKey, requestFingerprint, expectedCaseStateVersion, boundCaseStateVersion, domainVersion, policyVersion, state, stateVersion, createdAt, approvalExpiresAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        caseId: { type: string, format: uuid }
+        recommendationId: { type: string, format: uuid }
+        definitionId: { type: string }
+        definitionVersion: { type: string }
+        input: { type: object }
+        evidenceIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        requestedBy: { type: string }
+        approvedBy: { type: [string, 'null'] }
+        idempotencyKey: { type: string }
+        requestFingerprint: { type: string, pattern: '^[a-f0-9]{64}$' }
+        expectedCaseStateVersion: { type: integer, format: int64 }
+        boundCaseStateVersion: { type: integer, format: int64 }
+        verificationBoundCaseStateVersion: { type: [integer, 'null'], format: int64, minimum: 0 }
+        domainVersion: { type: string }
+        policyVersion: { type: string }
+        state: { $ref: '#/components/schemas/ActionState' }
+        stateVersion: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        approvalExpiresAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ActionState:
+      type: string
+      enum: [PROPOSED, POLICY_PASSED, AWAITING_APPROVAL, APPROVED, EXECUTING, EXECUTED_UNVERIFIED, VERIFIED_SUCCEEDED, VERIFIED_FAILED, REJECTED, EXPIRED, CANCELLED, UNKNOWN_REQUIRES_RECONCILIATION, COMPENSATING, COMPENSATED, MANUAL_INTERVENTION]
+    ActionReceipt:
+      type: object
+      required: [id, tenantId, actionRequestId, externalRequestId, outcome, attempts, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        actionRequestId: { type: string, format: uuid }
+        externalRequestId: { type: string }
+        externalReceiptId: { type: [string, 'null'] }
+        outcome: { type: string, enum: [SUCCEEDED, FAILED, UNKNOWN, COMPENSATED] }
+        attempts: { type: array, items: { type: object } }
+        compensationReceiptId: { type: [string, 'null'] }
+        compensationVerificationId: { type: [string, 'null'], format: uuid }
+        verificationId: { type: [string, 'null'], format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    VerificationResult:
+      type: object
+      required: [id, tenantId, actionRequestId, verifierId, purpose, independentSource, outcome, assertions, evidenceRefs, resolvedKnowledgeGapIds, observedFrom, observedUntil, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        actionRequestId: { type: string, format: uuid }
+        verifierId: { type: string }
+        purpose: { type: string, enum: [ACTION, COMPENSATION] }
+        independentSource: { type: string }
+        outcome: { type: string, enum: [PASSED, FAILED, INCONCLUSIVE] }
+        assertions: { type: array, minItems: 1, items: { type: object } }
+        evidenceRefs: { type: array, minItems: 1, items: { $ref: '#/components/schemas/EvidenceRef' } }
+        resolvedKnowledgeGapIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        observedFrom: { type: string, format: date-time }
+        observedUntil: { type: string, format: date-time }
+        antiGamingMetrics: { type: object, additionalProperties: { type: number } }
+        createdAt: { type: string, format: date-time }
+    MemoryAsset:
+      type: object
+      required: [id, tenantId, level, status, titleZh, contentZh, sourceCaseIds, sourceEvidenceIds, validFrom, ownerId, aclRef, modelVersion, stateVersion, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string }
+        level: { type: string, enum: [L0_TRACE, L1_ATOMIC_CANDIDATE, L2_SCENARIO_PATTERN, L3_APPROVED_PLAYBOOK] }
+        status: { type: string, enum: [PROPOSED, APPROVED, SUPERSEDED, REVOKED] }
+        titleZh: { type: string }
+        contentZh: { type: string }
+        sourceCaseIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        sourceEvidenceIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        validFrom: { type: string, format: date-time }
+        validTo: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        ownerId: { type: string }
+        aclRef: { type: string }
+        modelVersion: { type: string }
+        embeddingVersion: { type: [string, 'null'] }
+        supersedesId: { type: [string, 'null'], format: uuid }
+        stateVersion: { type: integer, format: int64, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ExecutionView:
+      type: object
+      required: [request, receipt]
+      properties:
+        request: { $ref: '#/components/schemas/ActionRequest' }
+        receipt: { $ref: '#/components/schemas/ActionReceipt' }
+    VerificationView:
+      type: object
+      required: [request, receipt, verification]
+      properties:
+        request: { $ref: '#/components/schemas/ActionRequest' }
+        receipt: { $ref: '#/components/schemas/ActionReceipt' }
+        verification: { $ref: '#/components/schemas/VerificationResult' }
+        memoryCandidate:
+          anyOf:
+            - { $ref: '#/components/schemas/MemoryAsset' }
+            - { type: 'null' }
+    DomainPackView:
+      type: object
+      additionalProperties: false
+      required: [id, version, locale, status, publicActionIds, internalCompensationIds]
+      properties:
+        id: { type: string }
+        version: { type: string }
+        locale: { type: string }
+        status: { type: string }
+        publicActionIds: { type: array, uniqueItems: true, items: { type: string } }
+        internalCompensationIds: { type: array, uniqueItems: true, items: { type: string } }
+    AuditFact:
+      type: object
+      additionalProperties: false
+      required: [tenantId, aggregateType, aggregateId, eventType, actorId, occurredAt, details]
+      properties:
+        tenantId: { type: string }
+        aggregateType: { type: string }
+        aggregateId: { type: string }
+        eventType: { type: string }
+        actorId: { type: string }
+        occurredAt: { type: string, format: date-time }
+        details: { type: object, additionalProperties: { type: string } }
+    EvaluationHealth:
+      type: object
+      additionalProperties: false
+      required: [readiness, mode, datasetVersion, scenarioTemplates, deterministicCases, enforcedInvariants, successAuthority, acceptsAgentSelfReportedSuccess, generatedAt]
+      properties:
+        readiness: { type: string }
+        mode: { type: string }
+        datasetVersion: { type: string }
+        scenarioTemplates: { type: integer, minimum: 0 }
+        deterministicCases: { type: integer, minimum: 0 }
+        enforcedInvariants: { type: array, items: { type: string } }
+        successAuthority: { type: string }
+        acceptsAgentSelfReportedSuccess: { type: boolean }
+        generatedAt: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [title, status, detail]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }

@@ -1,0 +1,9 @@
+SmartData starter chart rendered successfully.
+
+Before installing into a production namespace:
+1. Create {{ .Values.runtimeApi.existingSecret }} and {{ .Values.workflowWorker.existingSecret }} through the platform secret manager with disjoint least-privilege contents.
+2. Override every enabled image with an immutable digest.
+3. Configure dependency CIDRs in networkPolicy.egressCIDRs.
+4. Keep demo authentication disabled.
+5. Enable mcpBridge only after configuring a TLS/mTLS runtimeBaseURL and exact host allowlist.
+6. Keep workflowWorker and Temporal disabled until a non-deterministic production facade is installed and independently verified.

@@ -1,0 +1,59 @@
+debug: false
+
+spring:
+  application:
+    name: smartdata-runtime-api
+  profiles:
+    # Fail closed: development/demo identity must always be selected explicitly.
+    default: production
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
+
+server:
+  port: 8080
+  shutdown: graceful
+  tomcat:
+    max-http-form-post-size: 262144
+    max-swallow-size: 1048576
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    # The upstream no-choice warning can embed the prompt. Keep this adapter's library body logging off.
+    org.springframework.ai.openai: "OFF"
+    com.openai: "OFF"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+server:
+  # Demo identities are only suitable for a loopback developer process.
+  address: 127.0.0.1

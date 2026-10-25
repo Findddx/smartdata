@@ -1,0 +1,7 @@
+apiVersion: v2
+name: smartdata
+description: Starter chart for the SmartData runtime plane and MCP bridge
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.30.0-0"

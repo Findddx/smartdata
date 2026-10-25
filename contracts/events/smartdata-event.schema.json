@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:smartdata:events:envelope:1.0.0",
+  "title": "SmartData CloudEvent envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "subject",
+    "time",
+    "datacontenttype",
+    "dataschema",
+    "tenantid",
+    "aggregateid",
+    "aggregateversion",
+    "data"
+  ],
+  "properties": {
+    "specversion": { "const": "1.0" },
+    "id": { "type": "string", "format": "uuid" },
+    "source": { "type": "string", "format": "uri-reference", "pattern": "^/smartdata/" },
+    "type": {
+      "type": "string",
+      "enum": [
+        "io.smartdata.run.started.v1",
+        "io.smartdata.evidence.added.v1",
+        "io.smartdata.recommendation.created.v1",
+        "io.smartdata.approval.requested.v1",
+        "io.smartdata.approval.decided.v1",
+        "io.smartdata.action.executed.v1",
+        "io.smartdata.verification.completed.v1",
+        "io.smartdata.run.completed.v1"
+      ]
+    },
+    "subject": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "time": { "type": "string", "format": "date-time" },
+    "datacontenttype": { "const": "application/json" },
+    "dataschema": { "const": "urn:smartdata:events:data:1.0.0" },
+    "tenantid": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$" },
+    "aggregateid": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "aggregateversion": { "type": "integer", "minimum": 0 },
+    "correlationid": { "type": "string", "format": "uuid" },
+    "causationid": { "type": "string", "format": "uuid" },
+    "traceparent": { "type": "string", "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseId", "occurredAt", "schemaVersion"],
+      "properties": {
+        "caseId": { "type": "string", "format": "uuid" },
+        "actionRequestId": { "type": "string", "format": "uuid" },
+        "recommendationId": { "type": "string", "format": "uuid" },
+        "evidenceIds": {
+          "type": "array",
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uuid" }
+        },
+        "receiptId": { "type": "string", "format": "uuid" },
+        "verificationId": { "type": "string", "format": "uuid" },
+        "state": { "type": "string" },
+        "outcome": { "type": "string" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "schemaVersion": { "const": "1.0.0" }
+      }
+    }
+  }
+}

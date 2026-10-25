@@ -1,0 +1,236 @@
+openapi: 3.1.0
+info:
+  title: SmartData local workspace API
+  version: 1.0.0
+  license: { name: Apache-2.0, identifier: Apache-2.0 }
+  description: >-
+    本地工作区的只读来源接入、数据盘点、证据和人员协作契约。仅在显式 local profile
+    启用，持久化到客户本机文件；这是本地单实例能力，不是生产多租户部署承诺。
+    助手默认使用确定性规则；显式配置模型时通过 Spring AI 处理服务端筛选后的证据，
+    返回明确的方法、成功或失败状态、不确定性和版本追踪。本端连接器只发送读取请求，未提供业务写入方法。
+    本地演示身份可由操作者切换，不构成真实双人审批或企业身份认证的证明。
+    每个 POST 要求 Idempotency-Key 和工作区 expectedStateVersion，所有成功命令返回
+    最新 WorkspaceView。版本冲突应重新读取后由用户确认，不能盲目重试。
+servers:
+  - url: /api/v1
+security:
+  - {}
+  - localActor: []
+tags:
+  - name: Workspace
+    description: 当前租户的来源、采样证据和协作进度。
+paths:
+  /workspace:
+    get:
+      tags: [Workspace]
+      summary: 查看工作区
+      operationId: getWorkspace
+      description: 读取元数据、问题、助手、任务与能力，不返回源数据行和凭据。
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/report:
+    get:
+      tags: [Workspace]
+      summary: 查看有证据范围说明的工作报告
+      operationId: getWorkspaceReport
+      responses:
+        '200':
+          description: 基于当前盘点的规则报告；不得用于宣称企业全库健康或商业收益。
+          content:
+            application/json:
+              schema: { $ref: '../workspace/workspace.schema.json#/$defs/WorkspaceReport' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/sources:
+    post:
+      tags: [Workspace]
+      summary: 登记只读数据来源
+      operationId: createWorkspaceSource
+      description: >-
+        JSON 快照要求真实 observedAt，最多 1000 行，每行最多 128 个标量字段。
+        只有 ADMIN 演示角色可以登记来源。HTTP 及 PostgreSQL 主机必须获服务端精确允许，
+        凭据必须绑定到租户、连接器类型、规范化完整端点与 schema，使用
+        SMARTDATA_CONNECTOR_ 环境变量引用。端点禁止内嵌用户名密码、查询参数和片段。
+        不能把用户来源与 DEMO 来源混入一个工作区。此操作只登记，随后调用 scan。
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/CreateSourceCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/sources/{sourceId}/scan:
+    post:
+      tags: [Workspace]
+      summary: 读取已授权来源并生成盘点证据
+      operationId: scanWorkspaceSource
+      description: >-
+        有界只读读取后返回字段统计、来源哈希和规则问题。外部观察失败时仍返回 200
+        的 WorkspaceView，内含 FAILED 的 ScanView 与 SourceView；调用方必须检查这些
+        状态，不能把 HTTP 成功当作扫描成功。未知的全量行数保留 null，不能当成 0。
+      parameters: [{ $ref: '#/components/parameters/SourceId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/sources/{sourceId}/snapshot:
+    post:
+      tags: [Workspace]
+      summary: 用新采集的 JSON 快照替换本机输入
+      operationId: replaceWorkspaceSnapshot
+      description: 仅 ADMIN 可替换 USER 的 JSON_SNAPSHOT；不修改外部数据。上传后必须重新 scan 才产生新的盘点证据。
+      parameters: [{ $ref: '#/components/parameters/SourceId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/ReplaceSnapshotCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/sources/{sourceId}/disconnect:
+    post:
+      tags: [Workspace]
+      summary: 撤销来源的后续读取授权
+      operationId: disconnectWorkspaceSource
+      description: 仅 ADMIN 可断开；清除该来源的凭据引用，拒绝后续扫描与修复核验。保留历史盘点、问题、协作与审计记录。
+      parameters: [{ $ref: '#/components/parameters/SourceId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/demo/bootstrap:
+    post:
+      tags: [Workspace]
+      summary: 在空工作区加载明确标注的电商样例
+      operationId: bootstrapWorkspaceDemo
+      description: 只允许空工作区，创建 DEMO 来源、样例盘点和规则助手，不会覆盖用户来源。
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/demo/reset:
+    post:
+      tags: [Workspace]
+      summary: 清空纯演示工作区
+      operationId: resetWorkspaceDemo
+      description: 只允许来源全部为 DEMO 的工作区；保留审计记录，不删除用户来源。
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/team/provision:
+    post:
+      tags: [Workspace]
+      summary: 根据已观察证据建立三个职责助手和任务
+      operationId: provisionWorkspaceTeam
+      description: 至少一次成功盘点后，建立运维、分析、决策职责助手；方法由服务端已配置的推理入口决定。重复调用同步任务，不生成源系统写入授权。
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { $ref: '#/components/requestBodies/Version' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/tasks/{taskId}/transition:
+    post:
+      tags: [Workspace]
+      summary: 领取、提交完成、复核或重新打开任务
+      operationId: transitionWorkspaceTask
+      description: >-
+        PROPOSED/REOPENED → ACCEPTED → COMPLETED → VERIFIED。仅领取人可提交完成，
+        提交完成需引用本工作区证据。VERIFIED 需要不同于任务完成者的管理员或业务负责人
+        演示身份，引用同源新的成功扫描，且原问题规则在非空、字段仍存在的新完整证据中
+        不再触发。未知全量或不稳定采样不能证明修复，拒绝进入 VERIFIED。
+        用户说明与助手回答都不能单独证明已修复；本地角色切换也不证明真实的双人控制。
+      parameters: [{ $ref: '#/components/parameters/TaskId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/TaskTransitionCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/tasks/{taskId}/comments:
+    post:
+      tags: [Workspace]
+      summary: 为任务追加带证据引用的人员记录
+      operationId: commentWorkspaceTask
+      parameters: [{ $ref: '#/components/parameters/TaskId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/TaskCommentCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+  /workspace/assistants/{assistantId}/messages:
+    post:
+      tags: [Workspace]
+      summary: 向职责助手提问并获得范围明确的证据摘要
+      operationId: messageWorkspaceAssistant
+      description: >-
+        默认 DETERMINISTIC_RULES 明示未调用模型；可选 SPRING_AI_EVIDENCE_V1 必须由服务端
+        显式配置，发送前检查证据出口与预算，返回 status、uncertainty 和 trace。
+        HTTP 200 不等于模型成功，调用方必须检查消息 status；失败保留稳定 errorCode，
+        不伪造成功或回退成规则答案。trace 记录模型、提示词版本和上下文哈希，不包含密钥、
+        原始数据行或提示词正文。模型没有 SQL、Shell 或执行源系统操作的工具。
+        问题中的指令不能改变权限；模型回答不能代替独立复查证据。
+      parameters: [{ $ref: '#/components/parameters/AssistantId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../workspace/workspace.schema.json#/$defs/AssistantMessageCommand' }
+      responses:
+        '200': { $ref: '#/components/responses/Workspace' }
+        default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
+components:
+  securitySchemes:
+    localActor:
+      type: apiKey
+      in: header
+      name: X-Demo-Actor
+      description: >-
+        仅显式 local profile 中的本地角色切换。省略时为 order-specialist；可用
+        order-specialist、warehouse-approver、sales-owner、auditor、admin。
+        这不是生产认证。auditor 只读；来源的创建、替换和断开需要 ADMIN，
+        任务编辑允许业务编辑角色，核验需要 ADMIN 或 SALES_OWNER 且不同于完成身份。
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 同一租户与调用身份的命令去重键；同一键绑定不同请求返回冲突。
+      schema: { type: string, minLength: 8, maxLength: 128 }
+    SourceId:
+      name: sourceId
+      in: path
+      required: true
+      schema: { $ref: '../workspace/workspace.schema.json#/$defs/Id' }
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { $ref: '../workspace/workspace.schema.json#/$defs/Id' }
+    AssistantId:
+      name: assistantId
+      in: path
+      required: true
+      schema: { $ref: '../workspace/workspace.schema.json#/$defs/Id' }
+  requestBodies:
+    Version:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../workspace/workspace.schema.json#/$defs/VersionCommand' }
+  responses:
+    Workspace:
+      description: 当前工作区完整视图；未包含原始来源行、用户名或密钥。
+      content:
+        application/json:
+          schema: { $ref: '../workspace/workspace.schema.json#/$defs/WorkspaceView' }

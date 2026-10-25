@@ -1,0 +1,622 @@
+{
+  "verifiedAtUtc": "2026-10-25T13:28:44.6725790Z",
+  "method": "Independent SHA-256 of Maven Central HTTPS artifacts; no redirects; existing hashes unchanged",
+  "scope": "Only additions compared with the supplied baseline. POM license declarations are recorded when present; inherited licenses require separate review.",
+  "artifactCount": 70,
+  "artifacts": [
+    {
+      "component": "com.fasterxml:oss-parent:58",
+      "artifact": "oss-parent-58.pom",
+      "sha256": "5670e6ac1c4ddcc9d413cf87997a5da2efaa4d2abe439363af9ef102a0a09e40",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/oss-parent/58/oss-parent-58.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.fasterxml:oss-parent:73",
+      "artifact": "oss-parent-73.pom",
+      "sha256": "486d8da262f42c9c00f3e7cfff1471473347cfc69edd7f064fc97194de29d66e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/oss-parent/73/oss-parent-73.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.fasterxml.jackson:jackson-bom:2.17.2",
+      "artifact": "jackson-bom-2.17.2.pom",
+      "sha256": "1f472b0bc2004d5cf421ac48871417f84189e78f35c049718387fd8b44fb9f32",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/jackson-bom/2.17.2/jackson-bom-2.17.2.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.fasterxml.jackson:jackson-parent:2.17",
+      "artifact": "jackson-parent-2.17.pom",
+      "sha256": "aee6de4a97283b040e43f4dad575e7b74796cd984d89276f7ec7567380c8a29d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/jackson-parent/2.17/jackson-parent-2.17.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator:4.38.0",
+      "artifact": "jsonschema-generator-4.38.0.pom",
+      "sha256": "7c64a139379fbfb79c87f6d079e3872409480c9b810c551476af9e4b5b14d0eb",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator/4.38.0/jsonschema-generator-4.38.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator:5.0.0",
+      "artifact": "jsonschema-generator-5.0.0.jar",
+      "sha256": "dc17156260641870fd0f2dcbda5866f7d2fdffc668a41928487b1008ae3335c0",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator/5.0.0/jsonschema-generator-5.0.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator:5.0.0",
+      "artifact": "jsonschema-generator-5.0.0.pom",
+      "sha256": "945e0031ddad94852162fda004aaa2ce32b95a508ba7a43848b50274ad977e92",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator/5.0.0/jsonschema-generator-5.0.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator-bom:4.38.0",
+      "artifact": "jsonschema-generator-bom-4.38.0.pom",
+      "sha256": "a88e0edc7e30b49de928fbc34d967a72d059861805549d136604e2d7c178562b",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator-bom/4.38.0/jsonschema-generator-bom-4.38.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator-bom:5.0.0",
+      "artifact": "jsonschema-generator-bom-5.0.0.pom",
+      "sha256": "993bc3d1c5e77efac0c5f57e1d818c0b376a6c4694fa1a1b3f02f519ea2ff1ec",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator-bom/5.0.0/jsonschema-generator-bom-5.0.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator-parent:4.38.0",
+      "artifact": "jsonschema-generator-parent-4.38.0.pom",
+      "sha256": "ef31a6018a77a7bad412f266af4c2be26918c8eacd793aac1ec29c8577ad9c95",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator-parent/4.38.0/jsonschema-generator-parent-4.38.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.victools:jsonschema-generator-parent:5.0.0",
+      "artifact": "jsonschema-generator-parent-5.0.0.pom",
+      "sha256": "377e6046b13a00091dc64696306c4a79e3afd2dd0dfd5cb325c53e3332451c89",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-generator-parent/5.0.0/jsonschema-generator-parent-5.0.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-jackson:4.38.0",
+      "artifact": "jsonschema-module-jackson-4.38.0.pom",
+      "sha256": "df1351018eecf2ae102389b42159209864ba7e43ac5ab9f192a2bdeab90a8fb5",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-jackson/4.38.0/jsonschema-module-jackson-4.38.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-jackson:5.0.0",
+      "artifact": "jsonschema-module-jackson-5.0.0.jar",
+      "sha256": "5c0d08b4696fd734b314c1b9dd517d932de4055f1cf9a074eafc95a580bb8da2",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-jackson/5.0.0/jsonschema-module-jackson-5.0.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-jackson:5.0.0",
+      "artifact": "jsonschema-module-jackson-5.0.0.pom",
+      "sha256": "31fe99fc390e3688250c80a42c97ce267087cbacdeebc707c10128f3f2f31502",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-jackson/5.0.0/jsonschema-module-jackson-5.0.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-swagger-2:4.38.0",
+      "artifact": "jsonschema-module-swagger-2-4.38.0.pom",
+      "sha256": "893b7ce586f3010d41dd0687709583f141f5f0e26e870a63c88b7baa04190590",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-swagger-2/4.38.0/jsonschema-module-swagger-2-4.38.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-swagger-2:5.0.0",
+      "artifact": "jsonschema-module-swagger-2-5.0.0.jar",
+      "sha256": "5c4d6931de56b4b58917c7b9bd3e801b041744ecce1bfed14b0e525379e570c3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-swagger-2/5.0.0/jsonschema-module-swagger-2-5.0.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.victools:jsonschema-module-swagger-2:5.0.0",
+      "artifact": "jsonschema-module-swagger-2-5.0.0.pom",
+      "sha256": "22da2257c509d105123a4af38c1be3c5e270ab0d8f5b2dd1890d000f987cd8ba",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/victools/jsonschema-module-swagger-2/5.0.0/jsonschema-module-swagger-2-5.0.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.google.errorprone:error_prone_annotations:2.33.0",
+      "artifact": "error_prone_annotations-2.33.0.jar",
+      "sha256": "d9f3af3974fa64cd0f0f34238f40d9898abf7df19ca15849e1978f5beb818cb6",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_annotations/2.33.0/error_prone_annotations-2.33.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.google.errorprone:error_prone_annotations:2.33.0",
+      "artifact": "error_prone_annotations-2.33.0.pom",
+      "sha256": "3bd6f95c10abdbeae0b6257bfa5aa60e2de98401df313ce79cfd01850fa97710",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_annotations/2.33.0/error_prone_annotations-2.33.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "com.google.errorprone:error_prone_parent:2.33.0",
+      "artifact": "error_prone_parent-2.33.0.pom",
+      "sha256": "f8134d8850e8adaee5afedd1a90c09b0d61ff6f51277857ccbc0f7e4fbce3bd3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_parent/2.33.0/error_prone_parent-2.33.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "com.google.guava:guava-parent:33.4.8-android",
+      "artifact": "guava-parent-33.4.8-android.pom",
+      "sha256": "297e815c21907da2994a00743191709e0abbe5e9d204eb106ec0b88bfaa963db",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/google/guava/guava-parent/33.4.8-android/guava-parent-33.4.8-android.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.knuddels:jtokkit:1.1.0",
+      "artifact": "jtokkit-1.1.0.jar",
+      "sha256": "1501ce0259ab897c6746ccfafa1d208acd404fb17e1ac62e157172f2678b1183",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/knuddels/jtokkit/1.1.0/jtokkit-1.1.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.knuddels:jtokkit:1.1.0",
+      "artifact": "jtokkit-1.1.0.module",
+      "sha256": "431c403ecf3444ec3bd9934922f36939fd6f0829579a9a25c92741992cd58c2f",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/knuddels/jtokkit/1.1.0/jtokkit-1.1.0.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.openai:openai-java-core:4.49.0",
+      "artifact": "openai-java-core-4.49.0.jar",
+      "sha256": "e8947a51253d371010df36b75f3a9ac6acd9fb67e3157b7c4888579ce030b8aa",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/openai/openai-java-core/4.49.0/openai-java-core-4.49.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.openai:openai-java-core:4.49.0",
+      "artifact": "openai-java-core-4.49.0.module",
+      "sha256": "5b51636f00bc4f0232e08909e48631866e6d080078d928313ae5e6895b6563cf",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/openai/openai-java-core/4.49.0/openai-java-core-4.49.0.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.squareup.okhttp3:okhttp:4.12.0",
+      "artifact": "okhttp-4.12.0.jar",
+      "sha256": "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.squareup.okhttp3:okhttp:4.12.0",
+      "artifact": "okhttp-4.12.0.module",
+      "sha256": "607e220ff8215b929d829bbf54f332894f1459b4d795979aeafcbcc1cea54cf3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.squareup.okio:okio:3.6.0",
+      "artifact": "okio-3.6.0.module",
+      "sha256": "6a47ac50364e6598459401fb86f9b6cfcdf637b9b3a3045b1cc33cbf4c408218",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/squareup/okio/okio/3.6.0/okio-3.6.0.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.squareup.okio:okio-jvm:3.6.0",
+      "artifact": "okio-jvm-3.6.0.jar",
+      "sha256": "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.squareup.okio:okio-jvm:3.6.0",
+      "artifact": "okio-jvm-3.6.0.module",
+      "sha256": "b1c2199e1c0cc969ef61cbbe4af2ecaf9b06411bdde01cbaf6fc9134dfe04e8a",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.micrometer:context-propagation:1.2.1",
+      "artifact": "context-propagation-1.2.1.jar",
+      "sha256": "5b69e2100640879ccf4b20673ced86de560b8e217b55542f85a53d3563b72aaa",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/micrometer/context-propagation/1.2.1/context-propagation-1.2.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.micrometer:context-propagation:1.2.1",
+      "artifact": "context-propagation-1.2.1.pom",
+      "sha256": "6897193b22c0c5198afbd541e6ae4d82f1b6881dd8f26b4bb2a72baf62b47aef",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/micrometer/context-propagation/1.2.1/context-propagation-1.2.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "io.projectreactor:reactor-core:3.8.7",
+      "artifact": "reactor-core-3.8.7.jar",
+      "sha256": "9a5f1bfc5ad0416a410ff63beaa279cc30c2da3ae9b111a678c83c99298a1551",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/projectreactor/reactor-core/3.8.7/reactor-core-3.8.7.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.projectreactor:reactor-core:3.8.7",
+      "artifact": "reactor-core-3.8.7.module",
+      "sha256": "ee434c6263efb5b7f8f8d102e863cf9e71f9b761f36f74d57b7107ed4edd8972",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/projectreactor/reactor-core/3.8.7/reactor-core-3.8.7.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-annotations:2.2.31",
+      "artifact": "swagger-annotations-2.2.31.jar",
+      "sha256": "8cb2155211480e5fbd24388a6dc81baeea6dd50f8fcc6504cf4f39e4e3acf96c",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-annotations/2.2.31/swagger-annotations-2.2.31.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-annotations:2.2.31",
+      "artifact": "swagger-annotations-2.2.31.pom",
+      "sha256": "b2db23ac2c2d632adcc7947a09dedba3b296a5b5a6de0932b726112045144c42",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-annotations/2.2.31/swagger-annotations-2.2.31.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-annotations-jakarta:2.2.38",
+      "artifact": "swagger-annotations-jakarta-2.2.38.jar",
+      "sha256": "cf15aa4ab7e8c747d7b3d979660a49320ea56c0dc88b7021e48cc909c13b997b",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-annotations-jakarta/2.2.38/swagger-annotations-jakarta-2.2.38.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-annotations-jakarta:2.2.38",
+      "artifact": "swagger-annotations-jakarta-2.2.38.pom",
+      "sha256": "b9df92eb21048098cf391a4f82f27831571364d529a881af966e3fe34ced4459",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-annotations-jakarta/2.2.38/swagger-annotations-jakarta-2.2.38.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-project:2.2.31",
+      "artifact": "swagger-project-2.2.31.pom",
+      "sha256": "f84f8088b39ae537f0d3cedb4178de4245e7f80f06c7051d3eaeae4ab9d6e682",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-project/2.2.31/swagger-project-2.2.31.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License 2.0"
+      ]
+    },
+    {
+      "component": "io.swagger.core.v3:swagger-project-jakarta:2.2.38",
+      "artifact": "swagger-project-jakarta-2.2.38.pom",
+      "sha256": "2ca1c315d83aeadf0a2d392bb38d591faf41913e562e6e7ecda0d9aca9c91df7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/io/swagger/core/v3/swagger-project-jakarta/2.2.38/swagger-project-jakarta-2.2.38.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License 2.0"
+      ]
+    },
+    {
+      "component": "org.antlr:ST4:4.3.4",
+      "artifact": "ST4-4.3.4.jar",
+      "sha256": "f927ac384c46d749f8b5ec68972a53aed21e00313509299616edb73bfa15ff33",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/ST4/4.3.4/ST4-4.3.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.antlr:ST4:4.3.4",
+      "artifact": "ST4-4.3.4.pom",
+      "sha256": "9e7c1f3e489919440e8c13089e5963729d5b7f80f70233bfbae309c649abca3e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/ST4/4.3.4/ST4-4.3.4.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The BSD License"
+      ]
+    },
+    {
+      "component": "org.antlr:antlr-master:3.5.3",
+      "artifact": "antlr-master-3.5.3.pom",
+      "sha256": "ea9e37250f5c4c2e76b6538be97b57f3349bda585edf53f3ca97e207b385b895",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr-master/3.5.3/antlr-master-3.5.3.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "BSD licence"
+      ]
+    },
+    {
+      "component": "org.antlr:antlr-runtime:3.5.3",
+      "artifact": "antlr-runtime-3.5.3.jar",
+      "sha256": "68bf9f5a33dfcb34033495c587e6236bef4e37aa6612919f5b1e843b90669fb9",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr-runtime/3.5.3/antlr-runtime-3.5.3.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.antlr:antlr-runtime:3.5.3",
+      "artifact": "antlr-runtime-3.5.3.pom",
+      "sha256": "13298e0e0aafaf414ff7d4406427cab6ec4fbfa36427f6d7103c432f32c07d25",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr-runtime/3.5.3/antlr-runtime-3.5.3.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.antlr:antlr4-master:4.13.1",
+      "artifact": "antlr4-master-4.13.1.pom",
+      "sha256": "dbcfc979b80528fc0cb453fcb68dbc9d2b0603a7be2cdce99ab2fc6871469d18",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr4-master/4.13.1/antlr4-master-4.13.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "BSD-3-Clause"
+      ]
+    },
+    {
+      "component": "org.antlr:antlr4-runtime:4.13.1",
+      "artifact": "antlr4-runtime-4.13.1.jar",
+      "sha256": "54665d2838cc66458343468efc539e454fc95b46a8a04b13c6ac43fc9be63505",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr4-runtime/4.13.1/antlr4-runtime-4.13.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.antlr:antlr4-runtime:4.13.1",
+      "artifact": "antlr4-runtime-4.13.1.pom",
+      "sha256": "19226b17bfa38f99ea226b22e97420e2a8ede09a97420fb1acf186d9ada46571",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/antlr/antlr4-runtime/4.13.1/antlr4-runtime-4.13.1.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-common:2.3.21",
+      "artifact": "kotlin-stdlib-common-2.3.21.module",
+      "sha256": "6ad2f57891a54d96a6922112f758df957ce1ab8a3d5a57215cb74fa3e105e255",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/2.3.21/kotlin-stdlib-common-2.3.21.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.21",
+      "artifact": "kotlin-stdlib-jdk7-2.3.21.jar",
+      "sha256": "e2243abac2bed6e0b47be18b2b7fe1c1b4cf6a431480353dcd49d1ed35f31199",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/2.3.21/kotlin-stdlib-jdk7-2.3.21.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.21",
+      "artifact": "kotlin-stdlib-jdk7-2.3.21.pom",
+      "sha256": "f42fc1241fca14334f6a990edac7a4f7452a1f02c697d855a3fcf8ede51f015d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/2.3.21/kotlin-stdlib-jdk7-2.3.21.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache-2.0"
+      ]
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0",
+      "artifact": "kotlin-stdlib-jdk8-1.8.0.pom",
+      "sha256": "2bb6c7551b97c7ba029f9866582e7aa19d63abfd4cd53da3fc0c462f3ab5fc26",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0/kotlin-stdlib-jdk8-1.8.0.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.3.21",
+      "artifact": "kotlin-stdlib-jdk8-2.3.21.jar",
+      "sha256": "63091929246beba86b5fb2b020a6f5d06e01693a960b58a59959c8713667991c",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/2.3.21/kotlin-stdlib-jdk8-2.3.21.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.3.21",
+      "artifact": "kotlin-stdlib-jdk8-2.3.21.pom",
+      "sha256": "d2b8b9d649cbdbcfb21e91cb53b4da46dd34d22d757a8f88c1d1650030f820eb",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/2.3.21/kotlin-stdlib-jdk8-2.3.21.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache-2.0"
+      ]
+    },
+    {
+      "component": "org.reactivestreams:reactive-streams:1.0.4",
+      "artifact": "reactive-streams-1.0.4.jar",
+      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.reactivestreams:reactive-streams:1.0.4",
+      "artifact": "reactive-streams-1.0.4.pom",
+      "sha256": "54ba23d87a2d438540c99ef8794a0856fc573a256b498678283c3c67ef18ada8",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "MIT-0"
+      ]
+    },
+    {
+      "component": "org.springframework:spring-context-support:7.0.9",
+      "artifact": "spring-context-support-7.0.9.jar",
+      "sha256": "3c0c35a0371539f5e7d4e9d0226b9a009a4109cd0e20e805e27132dd6ae0727d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/spring-context-support/7.0.9/spring-context-support-7.0.9.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework:spring-context-support:7.0.9",
+      "artifact": "spring-context-support-7.0.9.module",
+      "sha256": "a2a179d74a7b317747d54e661e13f202d9f70b5b8dbe6bfe8c23affd7b3bb4e1",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/spring-context-support/7.0.9/spring-context-support-7.0.9.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework:spring-messaging:7.0.9",
+      "artifact": "spring-messaging-7.0.9.jar",
+      "sha256": "19ea7561e5d61e19bee0c94733d03bbf9384c9356eea2d4e90cce7ba3c0ab01b",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/spring-messaging/7.0.9/spring-messaging-7.0.9.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework:spring-messaging:7.0.9",
+      "artifact": "spring-messaging-7.0.9.module",
+      "sha256": "d5fb16b25bac0330d8d5266e52cc3adef728bd28eb7f1ebdef39d01d2fbb8c42",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/spring-messaging/7.0.9/spring-messaging-7.0.9.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-bom:2.0.1",
+      "artifact": "spring-ai-bom-2.0.1.pom",
+      "sha256": "d713b2696f77d07c787258e03f676da1f84bd87566e76afb79600a855d6c17ab",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-bom/2.0.1/spring-ai-bom-2.0.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-commons:2.0.1",
+      "artifact": "spring-ai-commons-2.0.1.jar",
+      "sha256": "c99512b8b7d7dc5bcb3d271d2f3de6e2edb948be6b05d750cc55c59cf50df9bd",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-commons/2.0.1/spring-ai-commons-2.0.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-commons:2.0.1",
+      "artifact": "spring-ai-commons-2.0.1.pom",
+      "sha256": "85b267b505f946d1be8dcab6b32150405c2354be76c8c185de5950cdaaaf19ac",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-commons/2.0.1/spring-ai-commons-2.0.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-model:2.0.1",
+      "artifact": "spring-ai-model-2.0.1.jar",
+      "sha256": "6123b7d3ed0b3691b38de08e5f09a686708991d193ce73f1660089f76f3820ec",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-model/2.0.1/spring-ai-model-2.0.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-model:2.0.1",
+      "artifact": "spring-ai-model-2.0.1.pom",
+      "sha256": "48433b59cd273454795b9b755298f32db561a56f30780abb13a3cbfbcacf3658",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-model/2.0.1/spring-ai-model-2.0.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-openai:2.0.1",
+      "artifact": "spring-ai-openai-2.0.1.jar",
+      "sha256": "2306930e09c05a579b7359656414c2d4d4404a679593318523a69bb7a0d4366d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-openai/2.0.1/spring-ai-openai-2.0.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-openai:2.0.1",
+      "artifact": "spring-ai-openai-2.0.1.pom",
+      "sha256": "0216c8c94bcb9d37bb053e17a353c328b97cc964a030e8f471f5903ce23bc813",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-openai/2.0.1/spring-ai-openai-2.0.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-template-st:2.0.1",
+      "artifact": "spring-ai-template-st-2.0.1.jar",
+      "sha256": "30ac600fd5fe4a3e7ff24120b6539e8d93ee2be0ad84491f7b264aa0e409b4ab",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-template-st/2.0.1/spring-ai-template-st-2.0.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.ai:spring-ai-template-st:2.0.1",
+      "artifact": "spring-ai-template-st-2.0.1.pom",
+      "sha256": "f5fe6ad3e7c7c322da18620612d7c2ccc71684bc536ba562b31f04947adf55ff",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-template-st/2.0.1/spring-ai-template-st-2.0.1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache 2.0"
+      ]
+    },
+    {
+      "component": "tools.jackson:jackson-bom:3.0.3",
+      "artifact": "jackson-bom-3.0.3.pom",
+      "sha256": "84e3ce4ea5c56d7bea8861fe1c439ac9a19dd54a9a3de9b8a0884bf0bbc750f2",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/jackson-bom/3.0.3/jackson-bom-3.0.3.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    }
+  ]
+}

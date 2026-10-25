@@ -1,0 +1,11 @@
+extends:
+  - recommended
+
+# Contract validation is local and deterministic; do not send source metadata
+# or trigger a background telemetry exporter on process shutdown.
+telemetry: off
+
+rules:
+  # Every operation uses the shared `default` RFC 9457 response, which is a
+  # stricter repository convention than repeating one arbitrary 4xx status.
+  operation-4xx-response: off

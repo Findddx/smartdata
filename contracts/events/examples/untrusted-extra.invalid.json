@@ -1,0 +1,19 @@
+{
+  "specversion": "1.0",
+  "id": "f74f1b84-d76b-4b41-ae3a-506e8909f70a",
+  "source": "/smartdata/runtime-api",
+  "type": "io.smartdata.run.started.v1",
+  "subject": "case/8d3ee931-f038-4dc3-a62f-dc5a5d51bb8c",
+  "time": "2026-09-07T08:00:00Z",
+  "datacontenttype": "application/json",
+  "dataschema": "urn:smartdata:events:data:1.0.0",
+  "tenantid": "x",
+  "aggregateid": "8d3ee931-f038-4dc3-a62f-dc5a5d51bb8c",
+  "aggregateversion": 1,
+  "untrustedPayload": "must not pass",
+  "data": {
+    "caseId": "8d3ee931-f038-4dc3-a62f-dc5a5d51bb8c",
+    "occurredAt": "2026-09-07T08:00:00Z",
+    "schemaVersion": "1.0.0"
+  }
+}

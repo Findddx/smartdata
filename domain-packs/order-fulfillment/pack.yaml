@@ -1,0 +1,190 @@
+id: order-fulfillment
+version: 1.0.0
+name: 订单履约异常
+description: B2B 制造与分销订单履约异常的证据、审批、执行和验证契约
+
+objects:
+  - id: customer
+    description: 客户
+    identityKeys: [customer_code]
+  - id: order
+    description: 销售订单
+    identityKeys: [erp_order_no, customer_po_no]
+    relationships:
+      - id: customer
+        target: customer
+        cardinality: one
+      - id: lines
+        target: order_line
+        cardinality: many
+  - id: order_line
+    description: 订单行
+    identityKeys: [erp_order_no, line_no]
+  - id: inventory
+    description: 仓库库存
+    identityKeys: [warehouse_code, sku]
+  - id: reservation
+    description: 库存预留
+    identityKeys: [reservation_no]
+  - id: shipment
+    description: 运输批次
+    identityKeys: [shipment_no, carrier_tracking_no]
+  - id: supplier
+    description: 供应商
+    identityKeys: [supplier_code]
+  - id: quality_inspection
+    description: 质量检验
+    identityKeys: [inspection_no]
+  - id: customer_commitment
+    description: 客户交付承诺
+    identityKeys: [erp_order_no, commitment_revision]
+  - id: exception_case
+    description: 履约异常案件
+    identityKeys: [case_id]
+
+events:
+  - id: order_exception_detected
+    aggregate: exception_case
+    schema:
+      type: object
+      additionalProperties: false
+      required: [caseId, detectedAt]
+      properties:
+        caseId: { type: string, format: uuid }
+        detectedAt: { type: string, format: date-time }
+  - id: evidence_observed
+    aggregate: exception_case
+    schema:
+      type: object
+      additionalProperties: false
+      required: [caseId, evidenceId]
+      properties:
+        caseId: { type: string, format: uuid }
+        evidenceId: { type: string, format: uuid }
+
+permissions:
+  - id: case.read
+    description: 查看授权范围内的异常案件
+    roles: [order_specialist, warehouse_approver, account_owner, auditor, admin]
+  - id: action.stock_recount.request
+    description: 发起库存复核
+    roles: [order_specialist, warehouse_approver, admin]
+  - id: action.stock_recount.approve
+    description: 审批库存复核请求
+    roles: [warehouse_approver, admin]
+  - id: action.inventory.reserve.request
+    description: 发起替代库存预留
+    roles: [order_specialist, admin]
+  - id: action.inventory.reserve.approve
+    description: 审批和触发替代库存预留
+    roles: [warehouse_approver, admin]
+
+verifiers:
+  - id: stock_recount_task_created
+    description: 从 WMS 独立读取并确认盘点任务存在
+    target: exception_case
+    mode: DETERMINISTIC
+    observationWindowSeconds: 60
+  - id: substitute_reservation_confirmed
+    description: 从 WMS 独立读取预留及库存余额
+    target: reservation
+    mode: DETERMINISTIC
+    observationWindowSeconds: 60
+  - id: reservation_release_confirmed
+    description: 从 WMS 独立确认预留已释放
+    target: reservation
+    mode: DETERMINISTIC
+    observationWindowSeconds: 60
+
+actions:
+  - id: request_stock_recount
+    description: 请求指定仓库对 SKU 进行人工库存复核
+    target: exception_case
+    risk: LOW
+    permission: action.stock_recount.request
+    approvalPermission: action.stock_recount.approve
+    approvalRequired: true
+    verifier: stock_recount_task_created
+    timeoutSeconds: 30
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required: [caseId, warehouseCode, sku, assigneeId, dueAt]
+      properties:
+        caseId: { type: string, format: uuid }
+        warehouseCode: { type: string, minLength: 1, maxLength: 40 }
+        sku: { type: string, minLength: 1, maxLength: 80 }
+        assigneeId: { type: string, minLength: 1, maxLength: 100 }
+        dueAt: { type: string, format: date-time }
+  - id: reserve_substitute_inventory
+    description: 为订单行预留审批确认的替代库存
+    target: reservation
+    risk: MEDIUM
+    permission: action.inventory.reserve.request
+    approvalPermission: action.inventory.reserve.approve
+    approvalRequired: true
+    compensator: release_reservation
+    verifier: substitute_reservation_confirmed
+    resolvableGapCodes: [SUPPLIER_DELAY]
+    timeoutSeconds: 30
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required: [caseId, orderLineId, warehouseCode, sku, quantity]
+      properties:
+        caseId: { type: string, format: uuid }
+        orderLineId: { type: string, minLength: 1, maxLength: 80 }
+        warehouseCode: { type: string, minLength: 1, maxLength: 40 }
+        sku: { type: string, minLength: 1, maxLength: 80 }
+        quantity: { type: integer, minimum: 1, maximum: 100000 }
+  - id: release_reservation
+    description: 补偿释放替代库存预留
+    target: reservation
+    risk: LOW
+    permission: action.inventory.reserve.request
+    approvalPermission: action.inventory.reserve.approve
+    approvalRequired: true
+    initiable: false
+    verifier: reservation_release_confirmed
+    timeoutSeconds: 30
+    inputSchema:
+      type: object
+      additionalProperties: false
+      required: [caseId, reservationId, reason]
+      properties:
+        caseId: { type: string, format: uuid }
+        reservationId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+
+workflows:
+  - id: resolve_order_exception
+    description: 证据到独立验证的审批执行闭环
+    start: observe
+    steps:
+      - id: observe
+        kind: OBSERVE
+        next: decide
+      - id: decide
+        kind: DECISION
+        next: request_approval
+      - id: request_approval
+        kind: APPROVAL
+        next: execute_reservation
+      - id: execute_reservation
+        kind: ACTION
+        ref: reserve_substitute_inventory
+        next: verify_reservation
+      - id: verify_reservation
+        kind: VERIFY
+        ref: substitute_reservation_confirmed
+        next: done
+      - id: done
+        kind: END
+
+views:
+  - id: exception_case_workbench
+    objectType: exception_case
+    fields: [case_id, severity, status, customer, order, knowledge_state, recommendation, action_state]
+  - id: approval_inbox
+    objectType: exception_case
+    fields: [case_id, action, risk, requested_by, requested_at, evidence_count, policy_version]

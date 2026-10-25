@@ -1,0 +1,103 @@
+version: 1
+references:
+  - name: TencentDB-Agent-Memory
+    url: https://github.com/TencentCloud/TencentDB-Agent-Memory
+    branch: feat/server_team
+    commit: 2ee22397f6091b8cd3ea847bc1edb04d3bec0c94
+    retrievedAt: 2026-09-07
+    ignoredLocalPath: .research-cache/TencentDB-Agent-Memory-head-2ee2239
+    license: MIT
+    licenseNotice: Tencent project preamble retained for review; no source code is copied into the runtime
+    use: design-reference-only
+    adopted_patterns:
+      - layered experience memory
+      - asynchronous distillation
+      - hybrid retrieval and context budgets
+    excluded:
+      - production runtime dependency
+      - storage defaults
+      - proxy and authorization implementation
+  - name: ontology-driven-dev
+    url: https://github.com/sharptoolbox/ontology-driven-dev
+    branch: main
+    commit: 0fc4f9d28667e05339ef5acaa4e8396cffdb40cb
+    retrievedAt: 2026-09-07
+    ignoredLocalPath: .research-cache/ontology-driven-dev-0fc4f9d
+    license: MIT
+    use: design-reference-only
+    adopted_patterns:
+      - staged semantic contracts
+      - stable identifiers and traceability
+    excluded:
+      - sample runtime
+      - flow engine
+      - SQL safety implementation
+  - name: open-claude-ui
+    url: https://github.com/Caho1/open-claude-ui
+    branch: main
+    commit: c1f923ae0051a871941b98a0e2e3183a545e6a85
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/open-claude-ui
+    license: MIT
+    licenseSource: https://github.com/Caho1/open-claude-ui/blob/c1f923ae0051a871941b98a0e2e3183a545e6a85/LICENSE
+    use: design-reference-only
+    adopted_patterns:
+      - calm desktop workspace with persistent navigation and a focused working surface
+      - visible tool authorization states and evidence inspection
+      - CJK input composition protection and keyboard interaction
+    excluded:
+      - copied Claude branding or proprietary assets
+      - unverified claims of official implementation equivalence
+      - runtime dependency or copied component implementation
+  - name: liquid-glass-react
+    url: https://github.com/rdev/liquid-glass-react
+    branch: master
+    commit: ac48eab18d1f7f444ae30002d240cae29c863a21
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/liquid-glass-react
+    license: MIT
+    licenseSource: https://github.com/rdev/liquid-glass-react/blob/ac48eab18d1f7f444ae30002d240cae29c863a21/LICENSE
+    use: design-reference-only
+    adopted_patterns:
+      - localized elevated glass surfaces and subtle edge highlights
+      - progressive enhancement with an opaque fallback
+    excluded:
+      - refraction on evidence tables or editable text
+      - mandatory WebGL or SVG displacement for core workflows
+      - runtime dependency or copied shader implementation
+  - name: remotion
+    url: https://github.com/remotion-dev/remotion
+    branch: main
+    commit: 7830ef2f5553936bd43fc503fc030a150acba491
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/remotion
+    checkout: sparse-core-and-renderer
+    license: LicenseRef-Remotion
+    licenseSource: https://github.com/remotion-dev/remotion/blob/7830ef2f5553936bd43fc503fc030a150acba491/LICENSE.md
+    licenseNotice: Custom source-available terms; commercial eligibility must be reviewed before any optional video tooling is adopted
+    use: design-reference-only
+    adopted_patterns:
+      - deterministic business walkthroughs driven by a structured timeline
+      - scenario and caption data separated from the video presentation
+    excluded:
+      - core runtime dependency
+      - inclusion under the Apache-2.0 product license
+      - assumption that source availability permits unrestricted commercial distribution
+  - name: motion
+    url: https://github.com/motiondivision/motion
+    documentation: https://motion.dev/docs/react
+    branch: main
+    commit: fa2079f101353f1fa1c9463f5ba9709a0ca3d3bf
+    retrievedAt: 2026-10-25
+    ignoredLocalPath: .research-cache/motion
+    checkout: sparse-react-motion
+    license: MIT
+    licenseSource: https://github.com/motiondivision/motion/blob/fa2079f101353f1fa1c9463f5ba9709a0ca3d3bf/LICENSE.md
+    use: design-reference-only
+    adopted_patterns:
+      - state-driven transitions that preserve focus and spatial context
+      - reduced-motion support and lazy loading of expensive animation features
+    excluded:
+      - paid Motion Plus assets or examples without their own license review
+      - animation that delays approval or conceals a changed business state
+      - adding a runtime dependency before measured benefit

@@ -1,0 +1,89 @@
+{{- if .Values.mcpBridge.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdata.fullname" . }}-mcp-bridge
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-bridge
+spec:
+  replicas: {{ .Values.mcpBridge.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "smartdata.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: mcp-bridge
+  template:
+    metadata:
+      labels:
+        {{- include "smartdata.labels" . | nindent 8 }}
+        app.kubernetes.io/component: mcp-bridge
+    spec:
+      serviceAccountName: {{ include "smartdata.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mcp-bridge
+          image: "{{ .Values.mcpBridge.image.repository }}{{ if .Values.mcpBridge.image.digest }}@{{ .Values.mcpBridge.image.digest }}{{ else }}:{{ .Values.mcpBridge.image.tag }}{{ end }}"
+          imagePullPolicy: {{ .Values.mcpBridge.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - {name: SMARTDATA_MCP_LISTEN_ADDR, value: "0.0.0.0:{{ .Values.mcpBridge.port }}"}
+            - {name: SMARTDATA_MCP_HEALTH_LISTEN_ADDR, value: "0.0.0.0:{{ .Values.mcpBridge.healthPort }}"}
+            - {name: SMARTDATA_RUNTIME_BASE_URL, value: {{ .Values.mcpBridge.runtimeBaseURL | quote }}}
+            - {name: SMARTDATA_RUNTIME_ALLOWED_HOSTS, value: {{ .Values.mcpBridge.runtimeAllowedHosts | quote }}}
+            - {name: SMARTDATA_MCP_ALLOWED_ORIGINS, value: {{ join "," .Values.mcpBridge.allowedOrigins | quote }}}
+            - {name: SMARTDATA_MCP_ALLOW_INSECURE_UPSTREAM, value: "false"}
+            - {name: SMARTDATA_MCP_ALLOW_DEMO_AUTH, value: "false"}
+            - {name: SMARTDATA_MCP_MAX_CONCURRENT_REQUESTS, value: {{ .Values.mcpBridge.maxConcurrentRequests | quote }}}
+            - {name: SMARTDATA_MCP_MAX_REQUEST_BYTES, value: {{ .Values.mcpBridge.maxRequestBytes | quote }}}
+            - {name: SMARTDATA_MCP_MAX_RESPONSE_BYTES, value: {{ .Values.mcpBridge.maxResponseBytes | quote }}}
+          ports:
+            - {name: mcp, containerPort: {{ .Values.mcpBridge.port }}, protocol: TCP}
+            - {name: health, containerPort: {{ .Values.mcpBridge.healthPort }}, protocol: TCP}
+          livenessProbe:
+            httpGet: {path: /livez, port: health}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /readyz, port: health}
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.mcpBridge.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdata.fullname" . }}-mcp-bridge
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "smartdata.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: mcp-bridge
+  ports:
+    - {name: mcp, port: {{ .Values.mcpBridge.port }}, targetPort: mcp, protocol: TCP}
+{{- end }}

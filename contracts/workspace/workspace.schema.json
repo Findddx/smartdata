@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartdata.dev/contracts/workspace-v1.schema.json",
+  "title": "SmartData local workspace v1",
+  "description": "Current local-profile read-only discovery and evidence-based collaboration contracts. Secrets and source row bodies must not appear in response views.",
+  "$ref": "#/$defs/WorkspaceView",
+  "$defs": {
+    "Id": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "Version": { "type": "integer", "minimum": 0 },
+    "Timestamp": { "type": "string", "format": "date-time" },
+    "Hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "SourceKind": { "type": "string", "enum": ["JSON_SNAPSHOT", "HTTP_JSON", "JDBC_POSTGRES_READONLY"] },
+    "Provenance": { "type": "string", "enum": ["USER", "DEMO"] },
+    "TaskStatus": { "type": "string", "enum": ["PROPOSED", "ACCEPTED", "COMPLETED", "VERIFIED", "REOPENED"] },
+    "AssistantMethod": { "type": "string", "enum": ["DETERMINISTIC_RULES", "SPRING_AI_EVIDENCE_V1"] },
+    "EvidenceRefs": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/Id" } },
+    "Ids": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
+    "EnvironmentReference": { "type": ["string", "null"], "pattern": "^SMARTDATA_CONNECTOR_[A-Z][A-Z0-9_]{0,79}$" },
+    "Rows": {
+      "type": "array", "maxItems": 1000,
+      "items": {
+        "type": "object", "maxProperties": 128,
+        "propertyNames": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$" },
+        "additionalProperties": { "anyOf": [{ "type": "string", "maxLength": 4096 }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }] }
+      }
+    },
+    "VersionCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion"],
+      "properties": { "expectedStateVersion": { "$ref": "#/$defs/Version" } }
+    },
+    "CreateSourceCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion", "name", "kind"],
+      "properties": {
+        "expectedStateVersion": { "$ref": "#/$defs/Version" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "\\S" },
+        "kind": { "$ref": "#/$defs/SourceKind" },
+        "endpoint": { "type": ["string", "null"], "minLength": 1, "description": "Server-approved exact host, no embedded user info, query or fragment. PostgreSQL uses jdbc:postgresql://host/database." },
+        "credentialEnvRef": { "$ref": "#/$defs/EnvironmentReference" },
+        "usernameEnvRef": { "$ref": "#/$defs/EnvironmentReference" },
+        "snapshotRows": { "$ref": "#/$defs/Rows" },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "primaryKey": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+        "freshnessColumn": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+        "freshnessMaxHours": { "type": "integer", "minimum": 1, "maximum": 8760, "default": 24 },
+        "schema": { "type": "string", "default": "public", "description": "PostgreSQL business schema; system schemas are rejected by the connector." }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "JSON_SNAPSHOT" } } },
+          "then": { "required": ["observedAt"], "properties": { "observedAt": { "type": "string", "format": "date-time" }, "endpoint": { "type": "null" }, "credentialEnvRef": { "type": "null" }, "usernameEnvRef": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "HTTP_JSON" } } },
+          "then": { "required": ["endpoint"], "properties": { "endpoint": { "type": "string", "pattern": "^https?://" }, "usernameEnvRef": { "type": "null" }, "snapshotRows": { "type": "array", "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "JDBC_POSTGRES_READONLY" } } },
+          "then": {
+            "required": ["endpoint", "credentialEnvRef", "usernameEnvRef"],
+            "properties": { "endpoint": { "type": "string", "pattern": "^jdbc:postgresql://" }, "credentialEnvRef": { "type": "string" }, "usernameEnvRef": { "type": "string" }, "snapshotRows": { "type": "array", "maxItems": 0 }, "schema": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$", "not": { "enum": ["pg_catalog", "information_schema"] } } }
+          }
+        }
+      ]
+    },
+    "ReplaceSnapshotCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion", "snapshotRows", "observedAt"],
+      "properties": { "expectedStateVersion": { "$ref": "#/$defs/Version" }, "snapshotRows": { "$ref": "#/$defs/Rows" }, "observedAt": { "$ref": "#/$defs/Timestamp" } }
+    },
+    "TaskTransitionCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion", "status", "note"],
+      "properties": {
+        "expectedStateVersion": { "$ref": "#/$defs/Version" },
+        "status": { "type": "string", "enum": ["ACCEPTED", "COMPLETED", "VERIFIED", "REOPENED"] },
+        "note": { "type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S" },
+        "evidenceRefs": { "$ref": "#/$defs/EvidenceRefs" }
+      }
+    },
+    "TaskCommentCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion", "body"],
+      "properties": { "expectedStateVersion": { "$ref": "#/$defs/Version" }, "body": { "type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S" }, "evidenceRefs": { "$ref": "#/$defs/EvidenceRefs" } }
+    },
+    "AssistantMessageCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedStateVersion", "question"],
+      "properties": { "expectedStateVersion": { "$ref": "#/$defs/Version" }, "question": { "type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S" }, "taskId": { "type": ["string", "null"], "minLength": 1 } }
+    },
+    "WorkspaceView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["stateVersion", "mode", "sources", "assets", "scans", "findings", "assistants", "tasks", "comments", "messages", "audit", "capabilities"],
+      "properties": {
+        "stateVersion": { "$ref": "#/$defs/Version" }, "mode": { "const": "LOCAL_PERSISTENT" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceView" } },
+        "assets": { "type": "array", "items": { "$ref": "#/$defs/AssetView" } },
+        "scans": { "type": "array", "items": { "$ref": "#/$defs/ScanView" } },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/FindingView" } },
+        "assistants": { "type": "array", "items": { "$ref": "#/$defs/AssistantView" } },
+        "tasks": { "type": "array", "items": { "$ref": "#/$defs/TaskView" } },
+        "comments": { "type": "array", "items": { "$ref": "#/$defs/TaskComment" } },
+        "messages": { "type": "array", "items": { "$ref": "#/$defs/AssistantMessage" } },
+        "audit": { "type": "array", "items": { "$ref": "#/$defs/WorkspaceAudit" } },
+        "capabilities": { "$ref": "#/$defs/WorkspaceCapabilities" }
+      }
+    },
+    "WorkspaceCapabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceKinds", "httpAllowedHosts", "postgresAllowedHosts", "maxRowsPerAsset", "maxResponseBytes", "mutationsAffectSourceSystems", "assistantMethod"],
+      "properties": {
+        "sourceKinds": { "type": "array", "items": { "$ref": "#/$defs/SourceKind" } },
+        "httpAllowedHosts": { "type": "array", "items": { "type": "string" } },
+        "postgresAllowedHosts": { "type": "array", "items": { "type": "string" } },
+        "maxRowsPerAsset": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "maxResponseBytes": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+        "mutationsAffectSourceSystems": { "const": false },
+        "assistantMethod": { "$ref": "#/$defs/AssistantMethod" }
+      }
+    },
+    "SourceView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "kind", "provenance", "status", "endpointLabel", "lastScannedAt", "assetCount", "credentialConfigured", "stateVersion", "lastError"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" }, "name": { "type": "string" }, "kind": { "$ref": "#/$defs/SourceKind" }, "provenance": { "$ref": "#/$defs/Provenance" },
+        "status": { "type": "string", "enum": ["CONFIGURED", "SCANNED", "FAILED", "DISCONNECTED"] },
+        "endpointLabel": { "type": ["string", "null"] }, "lastScannedAt": { "type": ["string", "null"], "format": "date-time" },
+        "assetCount": { "type": "integer", "minimum": 0 }, "credentialConfigured": { "type": "boolean" }, "stateVersion": { "$ref": "#/$defs/Version" }, "lastError": { "type": ["string", "null"] }
+      }
+    },
+    "ColumnProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "inferredType", "missingCount", "distinctCount"],
+      "properties": { "name": { "type": "string" }, "inferredType": { "type": "string", "enum": ["EMPTY", "MIXED", "STRING", "NUMBER", "BOOLEAN"] }, "missingCount": { "type": "integer", "minimum": 0 }, "distinctCount": { "type": "integer", "minimum": 0 } }
+    },
+    "AssetView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sourceId", "name", "provenance", "rowCount", "totalRows", "sampleLimit", "sampled", "columns", "observedAt", "evidenceSha256", "sampling"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" }, "sourceId": { "$ref": "#/$defs/Id" }, "name": { "type": "string" }, "provenance": { "$ref": "#/$defs/Provenance" },
+        "rowCount": { "type": "integer", "minimum": 0, "maximum": 1000 }, "totalRows": { "type": ["integer", "null"], "minimum": 0 }, "sampleLimit": { "type": "integer", "minimum": 1, "maximum": 1000 }, "sampled": { "type": "boolean" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/ColumnProfile" } }, "observedAt": { "$ref": "#/$defs/Timestamp" }, "evidenceSha256": { "$ref": "#/$defs/Hash" }, "sampling": { "type": "string" }
+      }
+    },
+    "ScanView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sourceId", "provenance", "status", "startedAt", "completedAt", "assetIds", "findingIds", "method", "error"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" }, "sourceId": { "$ref": "#/$defs/Id" }, "provenance": { "$ref": "#/$defs/Provenance" }, "status": { "type": "string", "enum": ["SUCCEEDED", "FAILED"] },
+        "startedAt": { "$ref": "#/$defs/Timestamp" }, "completedAt": { "$ref": "#/$defs/Timestamp" }, "assetIds": { "$ref": "#/$defs/Ids" }, "findingIds": { "$ref": "#/$defs/Ids" }, "method": { "const": "READ_ONLY_RULE_SCAN_V1" }, "error": { "type": ["string", "null"] }
+      }
+    },
+    "FindingEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256", "sampledRows", "totalRows", "sampleLimit", "observedAt", "sampling"],
+      "properties": { "sha256": { "$ref": "#/$defs/Hash" }, "sampledRows": { "type": "integer", "minimum": 0, "maximum": 1000 }, "totalRows": { "type": ["integer", "null"], "minimum": 0 }, "sampleLimit": { "type": "integer", "minimum": 1, "maximum": 1000 }, "observedAt": { "$ref": "#/$defs/Timestamp" }, "sampling": { "type": "string" } }
+    },
+    "FindingView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sourceId", "assetId", "scanId", "provenance", "ruleId", "title", "severity", "column", "observed", "expected", "evidence", "suggestion", "active"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" }, "sourceId": { "$ref": "#/$defs/Id" }, "assetId": { "$ref": "#/$defs/Id" }, "scanId": { "$ref": "#/$defs/Id" }, "provenance": { "$ref": "#/$defs/Provenance" },
+        "ruleId": { "type": "string" }, "title": { "type": "string" }, "severity": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] }, "column": { "type": ["string", "null"] },
+        "observed": { "type": "string" }, "expected": { "type": "string" }, "evidence": { "$ref": "#/$defs/FindingEvidence" }, "suggestion": { "type": "string" }, "active": { "type": "boolean" }
+      }
+    },
+    "AssistantView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "role", "name", "responsibility", "status", "method", "findingIds", "taskIds"],
+      "properties": { "id": { "$ref": "#/$defs/Id" }, "role": { "type": "string", "enum": ["OPERATIONS", "ANALYSIS", "DECISION"] }, "name": { "type": "string" }, "responsibility": { "type": "string" }, "status": { "const": "READY" }, "method": { "$ref": "#/$defs/AssistantMethod" }, "findingIds": { "$ref": "#/$defs/Ids" }, "taskIds": { "$ref": "#/$defs/Ids" } }
+    },
+    "TaskView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "assistantId", "findingId", "title", "description", "status", "ownerId", "createdAt", "updatedAt", "completionNote", "evidenceRefs", "stateVersion", "verifiedBy"],
+      "properties": { "id": { "$ref": "#/$defs/Id" }, "assistantId": { "$ref": "#/$defs/Id" }, "findingId": { "$ref": "#/$defs/Id" }, "title": { "type": "string" }, "description": { "type": "string" }, "status": { "$ref": "#/$defs/TaskStatus" }, "ownerId": { "type": ["string", "null"] }, "createdAt": { "$ref": "#/$defs/Timestamp" }, "updatedAt": { "$ref": "#/$defs/Timestamp" }, "completionNote": { "type": ["string", "null"] }, "evidenceRefs": { "$ref": "#/$defs/Ids" }, "stateVersion": { "$ref": "#/$defs/Version" }, "verifiedBy": { "type": ["string", "null"] } }
+    },
+    "TaskComment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "taskId", "actorId", "body", "evidenceRefs", "createdAt"],
+      "properties": { "id": { "$ref": "#/$defs/Id" }, "taskId": { "$ref": "#/$defs/Id" }, "actorId": { "$ref": "#/$defs/Id" }, "body": { "type": "string" }, "evidenceRefs": { "$ref": "#/$defs/Ids" }, "createdAt": { "$ref": "#/$defs/Timestamp" } }
+    },
+    "AssistantMessage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "assistantId", "actorId", "question", "answer", "evidenceRefs", "createdAt", "method"],
+      "description": "Old deterministic records may omit the added result fields. A model result must state whether it succeeded, preserve uncertainty and identify its evidence-only context without recording prompt bodies or credentials.",
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" }, "assistantId": { "$ref": "#/$defs/Id" }, "actorId": { "$ref": "#/$defs/Id" }, "question": { "type": "string", "minLength": 1, "maxLength": 2000 }, "answer": { "type": "string", "minLength": 1, "maxLength": 16000 }, "evidenceRefs": { "$ref": "#/$defs/Ids" }, "createdAt": { "$ref": "#/$defs/Timestamp" }, "method": { "$ref": "#/$defs/AssistantMethod" },
+        "status": { "type": "string", "enum": ["SUCCEEDED", "FAILED"], "default": "SUCCEEDED" },
+        "uncertainty": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 1000, "pattern": "\\S" }, "default": [] },
+        "errorCode": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]{0,79}$", "default": null },
+        "trace": { "anyOf": [{ "$ref": "#/$defs/AssistantModelTrace" }, { "type": "null" }], "default": null }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "method": { "const": "SPRING_AI_EVIDENCE_V1" } } },
+          "then": {
+            "required": ["status", "uncertainty", "trace"],
+            "properties": { "status": true, "uncertainty": true, "trace": { "$ref": "#/$defs/AssistantModelTrace" } },
+            "allOf": [
+              { "if": { "properties": { "status": { "const": "SUCCEEDED" } } }, "then": { "properties": { "evidenceRefs": { "type": "array", "minItems": 1 }, "errorCode": { "type": "null" } } } },
+              { "if": { "properties": { "status": { "const": "FAILED" } } }, "then": { "required": ["errorCode"], "properties": { "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,79}$" } } } }
+            ]
+          }
+        }
+      ]
+    },
+    "AssistantModelTrace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["providerProfile", "modelId", "modelVersion", "promptVersion", "contextSha256"],
+      "properties": {
+        "providerProfile": { "type": "string", "minLength": 1 }, "modelId": { "type": "string", "minLength": 1 }, "modelVersion": { "type": "string", "minLength": 1 }, "promptVersion": { "type": "string", "minLength": 1 }, "contextSha256": { "$ref": "#/$defs/Hash" },
+        "responseId": { "type": ["string", "null"] }, "inputTokens": { "type": ["integer", "null"], "minimum": 0 }, "outputTokens": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "WorkspaceAudit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "actorId", "event", "resourceId", "occurredAt", "stateVersion"],
+      "properties": { "id": { "$ref": "#/$defs/Id" }, "actorId": { "$ref": "#/$defs/Id" }, "event": { "type": "string" }, "resourceId": { "$ref": "#/$defs/Id" }, "occurredAt": { "$ref": "#/$defs/Timestamp" }, "stateVersion": { "$ref": "#/$defs/Version" } }
+    },
+    "WorkspaceReport": {
+      "type": "object", "additionalProperties": false,
+      "required": ["generatedAt", "stateVersion", "method", "title", "sections", "evidenceRefs"],
+      "properties": { "generatedAt": { "$ref": "#/$defs/Timestamp" }, "stateVersion": { "$ref": "#/$defs/Version" }, "method": { "const": "DETERMINISTIC_EVIDENCE_REPORT_V1" }, "title": { "type": "string" }, "sections": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["title", "text"], "properties": { "title": { "type": "string" }, "text": { "type": "string" } } } }, "evidenceRefs": { "$ref": "#/$defs/Ids" } }
+    }
+  }
+}

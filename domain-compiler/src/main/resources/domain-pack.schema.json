@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:smartdata:domain-pack:1",
+  "title": "SmartData domain pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "name", "objects", "permissions", "actions", "verifiers", "workflows", "views"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 2000 },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/object" }
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "permissions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/permission" }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/action" }
+    },
+    "verifiers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/verifier" }
+    },
+    "workflows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/workflow" }
+    },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/view" }
+    },
+    "migration": { "$ref": "#/$defs/migration" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{1,127}$" },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "identityKeys"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "identityKeys": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/id" } },
+        "relationships": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/relationship" } }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "target": { "$ref": "#/$defs/id" },
+        "cardinality": { "enum": ["one", "optional", "many"] }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "aggregate", "schema"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "aggregate": { "$ref": "#/$defs/id" },
+        "schema": { "type": "object" }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "roles"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "roles": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "target", "risk", "permission", "approvalPermission", "approvalRequired", "inputSchema", "verifier"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "target": { "$ref": "#/$defs/id" },
+        "risk": { "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "permission": { "$ref": "#/$defs/id" },
+        "approvalPermission": { "$ref": "#/$defs/id" },
+        "approvalRequired": { "const": true },
+        "initiable": { "type": "boolean", "default": true },
+        "inputSchema": { "type": "object" },
+        "compensator": { "$ref": "#/$defs/id" },
+        "verifier": { "$ref": "#/$defs/id" },
+        "resolvableGapCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,79}$" }
+        },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 }
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "target", "mode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "target": { "$ref": "#/$defs/id" },
+        "mode": { "enum": ["DETERMINISTIC", "RUBRIC", "HUMAN"] },
+        "observationWindowSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "start", "steps"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "start": { "$ref": "#/$defs/id" },
+        "steps": { "type": "array", "minItems": 1, "maxItems": 200, "items": { "$ref": "#/$defs/workflowStep" } }
+      }
+    },
+    "workflowStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["OBSERVE", "ACTION", "VERIFY", "APPROVAL", "DECISION", "END"] },
+        "ref": { "$ref": "#/$defs/id" },
+        "next": { "$ref": "#/$defs/id" }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "objectType", "fields"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "objectType": { "$ref": "#/$defs/id" },
+        "fields": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromVersion", "description", "steps"],
+      "properties": {
+        "fromVersion": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "steps": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+      }
+    }
+  }
+}

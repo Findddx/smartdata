@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+package smartdata.connector.v1;
+
+option java_multiple_files = true;
+option java_package = "io.smartdata.connector.v1";
+
+// ConnectorNodeService is implemented in the customer data plane. Production
+// transport requires mutually authenticated TLS and short-lived workload identity.
+service ConnectorNodeService {
+  rpc DiscoverCapabilities(DiscoverCapabilitiesRequest) returns (DiscoverCapabilitiesResponse);
+  rpc GetSnapshot(GetSnapshotRequest) returns (SnapshotResponse);
+  rpc RequestEvidence(RequestEvidenceRequest) returns (EvidenceResponse);
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc Compensate(CompensateRequest) returns (CompensateResponse);
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+  rpc VerifyCompensation(VerifyRequest) returns (VerifyResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream ConnectorEvent);
+}
+
+message RequestContext {
+  string tenant_id = 1;
+  string actor_id = 2;
+  string correlation_id = 3;
+  string domain_pack_version = 4;
+  string policy_version = 5;
+}
+
+message DiscoverCapabilitiesRequest { RequestContext context = 1; }
+message DiscoverCapabilitiesResponse {
+  repeated Capability capabilities = 1;
+  string connector_version = 2;
+}
+message Capability {
+  string stable_id = 1;
+  string version = 2;
+  string input_schema_sha256 = 3;
+  bool supports_execute = 4;
+  bool supports_verify = 5;
+}
+
+message GetSnapshotRequest {
+  RequestContext context = 1;
+  string object_type = 2;
+  string source_id = 3;
+  string as_of = 4;
+}
+message SnapshotResponse {
+  string source_system = 1;
+  string source_id = 2;
+  string observed_at = 3;
+  string recorded_at = 4;
+  bytes canonical_json = 5;
+  string content_sha256 = 6;
+}
+
+message RequestEvidenceRequest {
+  RequestContext context = 1;
+  string case_id = 2;
+  string observation_type = 3;
+  string subject_id = 4;
+}
+message EvidenceResponse { repeated EvidenceReference evidence = 1; }
+message EvidenceReference {
+  string id = 1;
+  string source_system = 2;
+  string source_record_id = 3;
+  string object_uri = 4;
+  string content_sha256 = 5;
+  string classification = 6;
+  string acl_ref = 7;
+  string observed_at = 8;
+  string recorded_at = 9;
+}
+
+message ExecuteRequest {
+  RequestContext context = 1;
+  string action_request_id = 2;
+  string action_definition_id = 3;
+  string action_definition_version = 4;
+  string idempotency_key = 5;
+  bytes typed_input_json = 6;
+  string typed_input_schema_sha256 = 7;
+  int64 expected_state_version = 8;
+  // The connector must reject an expired, mismatched, replayed, or unsigned
+  // execution grant. The grant binds tenant, action request, approval,
+  // definition/schema/evidence hashes, idempotency key and state version.
+  string approval_id = 9;
+  string approved_by = 10;
+  string approval_expires_at = 11;
+  string execution_grant_jws = 12;
+  string evidence_bundle_sha256 = 13;
+}
+message ExecuteResponse {
+  string external_request_id = 1;
+  string external_receipt_id = 2;
+  Outcome outcome = 3;
+  string observed_at = 4;
+  string response_sha256 = 5;
+}
+
+message CompensateRequest {
+  RequestContext context = 1;
+  string action_request_id = 2;
+  string compensation_definition_id = 3;
+  string compensation_definition_version = 4;
+  string idempotency_key = 5;
+  string original_external_request_id = 6;
+  string original_external_receipt_id = 7;
+  string compensation_authorized_by = 8;
+  string compensation_grant_expires_at = 9;
+  // Separate one-time capability; the original execution grant is not valid
+  // for compensation.
+  string compensation_grant_jws = 10;
+}
+message CompensateResponse {
+  string external_request_id = 1;
+  string external_receipt_id = 2;
+  Outcome outcome = 3;
+  string observed_at = 4;
+  string response_sha256 = 5;
+}
+
+message VerifyRequest {
+  RequestContext context = 1;
+  string action_request_id = 2;
+  string verifier_id = 3;
+  string external_request_id = 4;
+  string external_receipt_id = 5;
+  string observation_window_start = 6;
+  string observation_window_end = 7;
+}
+message VerifyResponse {
+  VerificationOutcome outcome = 1;
+  repeated VerificationAssertion assertions = 2;
+  repeated EvidenceReference evidence = 3;
+  string independent_source = 4;
+  map<string, double> anti_gaming_metrics = 5;
+  repeated string resolved_knowledge_gap_ids = 6;
+}
+message VerificationAssertion {
+  string name = 1;
+  string expected = 2;
+  string observed = 3;
+  bool passed = 4;
+}
+
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  OUTCOME_SUCCEEDED = 1;
+  OUTCOME_FAILED = 2;
+  OUTCOME_UNKNOWN = 3;
+  OUTCOME_COMPENSATED = 4;
+}
+enum VerificationOutcome {
+  VERIFICATION_OUTCOME_UNSPECIFIED = 0;
+  VERIFICATION_OUTCOME_PASSED = 1;
+  VERIFICATION_OUTCOME_FAILED = 2;
+  VERIFICATION_OUTCOME_INCONCLUSIVE = 3;
+}
+
+message HealthRequest { RequestContext context = 1; }
+message HealthResponse {
+  string status = 1;
+  map<string, string> dependencies = 2;
+}
+message SubscribeEventsRequest {
+  RequestContext context = 1;
+  string resume_token = 2;
+}
+message ConnectorEvent {
+  string event_id = 1;
+  string source_system = 2;
+  string source_record_id = 3;
+  string event_type = 4;
+  string occurred_at = 5;
+  string content_sha256 = 6;
+  bytes canonical_json = 7;
+  string next_resume_token = 8;
+}

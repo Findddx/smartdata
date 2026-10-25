@@ -1,0 +1,14 @@
+{{- if and .Values.workflowWorker.enabled (eq .Values.runtimeApi.existingSecret .Values.workflowWorker.existingSecret) }}
+{{- fail "runtimeApi.existingSecret and workflowWorker.existingSecret must be different to preserve least privilege" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdata.fullname" . }}-config
+  labels:
+    {{- include "smartdata.labels" . | nindent 4 }}
+data:
+  SMARTDATA_TEMPORAL_ENABLED: {{ .Values.workflowWorker.temporal.enabled | quote }}
+  SMARTDATA_TEMPORAL_TARGET: {{ .Values.workflowWorker.temporal.target | quote }}
+  SMARTDATA_TEMPORAL_NAMESPACE: {{ .Values.workflowWorker.temporal.namespace | quote }}
+  SMARTDATA_TEMPORAL_TASK_QUEUE: {{ .Values.workflowWorker.temporal.taskQueue | quote }}

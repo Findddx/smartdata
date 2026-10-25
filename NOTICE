@@ -1,0 +1,7 @@
+SmartData Foundation
+Copyright 2026 SmartData contributors
+
+This product includes software developed by third parties. A machine-readable
+dependency inventory is produced as a CycloneDX SBOM during release builds.
+Reference projects listed in research-lock.yaml are design references only and
+are not incorporated into the distributed runtime unless separately declared.

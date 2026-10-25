@@ -1,0 +1,91 @@
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+imagePullSecrets: []
+
+runtimeApi:
+  existingSecret: smartdata-runtime-secrets
+  replicas: 2
+  image:
+    repository: ghcr.io/smartdata-foundation/runtime-api
+    tag: "0.1.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+  port: 8080
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "2", memory: 2Gi}
+  probes:
+    enabled: true
+    livenessPath: /actuator/health/liveness
+    readinessPath: /actuator/health/readiness
+
+workflowWorker:
+  # Fail closed until a production Connector/Kernel facade has replaced the
+  # deterministic local implementation and passed independent verification.
+  enabled: false
+  existingSecret: smartdata-worker-secrets
+  replicas: 2
+  image:
+    repository: ghcr.io/smartdata-foundation/workflow-worker
+    tag: "0.1.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+  temporal:
+    enabled: false
+    target: temporal.smartdata-dependencies.svc.cluster.local:7233
+    namespace: smartdata
+    taskQueue: smartdata-fulfillment-v1
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "2", memory: 2Gi}
+
+mcpBridge:
+  enabled: false
+  replicas: 2
+  image:
+    repository: ghcr.io/smartdata-foundation/mcp-bridge
+    tag: "0.1.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+  port: 8082
+  healthPort: 8083
+  runtimeBaseURL: https://runtime-api.smartdata.example:8443
+  runtimeAllowedHosts: runtime-api.smartdata.example
+  allowedOrigins: []
+  maxConcurrentRequests: 64
+  maxRequestBytes: 262144
+  maxResponseBytes: 1048576
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+networkPolicy:
+  enabled: true
+  dependencyNamespace: smartdata-dependencies
+  # Add only dependency/egress CIDRs approved for the customer data plane.
+  # With an empty list, external egress is denied; same-namespace SmartData
+  # components and cluster DNS remain reachable.
+  egressCIDRs: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

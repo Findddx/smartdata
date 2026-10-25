@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: smartdata-workflow-worker
+  profiles:
+    # The deterministic success facade must never be an implicit production fallback.
+    default: production
+  main:
+    web-application-type: none
+
+smartdata:
+  temporal:
+    enabled: ${SMARTDATA_TEMPORAL_ENABLED:false}
+    target: ${SMARTDATA_TEMPORAL_TARGET:127.0.0.1:7233}
+    namespace: ${SMARTDATA_TEMPORAL_NAMESPACE:default}
+    task-queue: ${SMARTDATA_TEMPORAL_TASK_QUEUE:smartdata-fulfillment-v1}
