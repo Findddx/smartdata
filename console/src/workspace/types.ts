@@ -8,7 +8,8 @@ export type WorkspaceViewId =
   | "tasks"
   | "sources"
   | "settings"
-  | "fulfillment";
+  | "fulfillment"
+  | "members";
 export type SourceKind =
   "JSON_SNAPSHOT" | "HTTP_JSON" | "JDBC_POSTGRES_READONLY";
 export type Provenance = "USER" | "DEMO";

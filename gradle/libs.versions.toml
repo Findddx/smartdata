@@ -17,6 +17,8 @@ spring-boot-webmvc = { module = "org.springframework.boot:spring-boot-starter-we
 spring-boot-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-oauth2-client = { module = "org.springframework.boot:spring-boot-starter-oauth2-client" }
+spring-boot-session-jdbc = { module = "org.springframework.boot:spring-boot-starter-session-jdbc" }
 spring-boot-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-jdbc = { module = "org.springframework.boot:spring-boot-starter-jdbc" }
 spring-boot-test = { module = "org.springframework.boot:spring-boot-starter-test" }

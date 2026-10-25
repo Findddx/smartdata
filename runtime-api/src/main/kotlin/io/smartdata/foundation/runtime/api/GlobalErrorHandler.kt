@@ -19,9 +19,15 @@ import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.NoHandlerFoundException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalErrorHandler {
+    @ExceptionHandler(NoHandlerFoundException::class, NoResourceFoundException::class)
+    fun missingRoute(error: Exception, request: HttpServletRequest) =
+        problem(HttpStatus.NOT_FOUND, "接口或资源不存在", "当前部署未提供该接口或资源", request)
+
     @ExceptionHandler(ResourceNotFoundException::class)
     fun notFound(error: ResourceNotFoundException, request: HttpServletRequest) =
         problem(HttpStatus.NOT_FOUND, "资源不存在", error.message, request)

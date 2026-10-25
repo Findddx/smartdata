@@ -1,0 +1,388 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SmartData 企业身份与成员接口",
+    "version": "1.0.0",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "description": "单企业数据平面的真实 OIDC 登录和当前成员目录。tenant 由服务器配置，账号来自已验证签发方与 subject，角色来自数据库当前成员状态。变更要求 CSRF、幂等键与版本；暂停和改权后旧授权版本不能提交。登录 /oauth2/authorization/enterprise、回调 /login/oauth2/code/enterprise 和 POST /logout 使用 Spring Security 标准协议，退出需 CSRF。IdP 令牌与来源正文不进入此接口。"
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Enterprise",
+      "description": "真实身份、精确邀请与成员生命周期。"
+    }
+  ],
+  "paths": {
+    "/me": {
+      "get": {
+        "operationId": "getEffectiveIdentity",
+        "summary": "读取当前登录账号和实时企业权限",
+        "security": [
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "登录信息；未登录或未加入企业也返回明确状态，不回退演示权限。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/Me"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/members": {
+      "get": {
+        "operationId": "listEnterpriseMembers",
+        "summary": "管理员查看成员与邀请",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/invitations": {
+      "post": {
+        "operationId": "inviteEnterpriseMember",
+        "summary": "邀请准确账号加入企业",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/InviteCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/invitations/{id}/accept": {
+      "post": {
+        "operationId": "acceptEnterpriseInvitation",
+        "summary": "本人接受仍有效的指定邀请",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/VersionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Me"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/invitations/{id}/revoke": {
+      "post": {
+        "operationId": "revokeEnterpriseInvitation",
+        "summary": "管理员撤销邀请",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/VersionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/members/{accountId}/roles": {
+      "post": {
+        "operationId": "changeEnterpriseMemberRoles",
+        "summary": "管理员修改成员角色",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/MemberRolesCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/members/{accountId}/suspend": {
+      "post": {
+        "operationId": "suspendEnterpriseMember",
+        "summary": "管理员暂停成员；旧会话即时失去权限",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/MemberStateCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    },
+    "/enterprise/members/{accountId}/activate": {
+      "post": {
+        "operationId": "activateEnterpriseMember",
+        "summary": "管理员重新启用成员；不恢复旧邀请",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/MemberStateCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Directory"
+          },
+          "default": {
+            "$ref": "./smartdata-v1.yaml#/components/responses/Problem"
+          }
+        },
+        "tags": [
+          "Enterprise"
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-SMARTDATA_SESSION",
+        "description": "服务器签发的 Secure、HttpOnly、SameSite=Lax 会话 Cookie；不由网页脚本构造。"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        }
+      },
+      "Csrf": {
+        "name": "X-CSRF-TOKEN",
+        "in": "header",
+        "required": true,
+        "description": "实际 headerName 与 token 由 /me 的 csrf 返回；登录和退出后须重新获取。",
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "responses": {
+      "Directory": {
+        "description": "当前获准读取的最新成员目录；不缓存旧响应绕过撤权。",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/Directory"
+            }
+          }
+        }
+      },
+      "Me": {
+        "description": "接受邀请后的当前权限。",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../enterprise/enterprise-v1.schema.json#/$defs/Me"
+            }
+          }
+        }
+      }
+    }
+  }
+}

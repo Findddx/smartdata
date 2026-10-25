@@ -3,6 +3,7 @@ package io.smartdata.foundation.runtime.workspace
 import io.smartdata.foundation.service.BusinessValidationException
 import io.smartdata.foundation.service.IdempotencyConflictException
 import io.smartdata.foundation.service.OptimisticStateException
+import io.smartdata.foundation.domain.Actor
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.KotlinModule
 import java.nio.ByteBuffer
@@ -27,9 +28,27 @@ import kotlin.concurrent.withLock
 
 /** Local persistence is a deliberate deployment mode, not a substitute for production PostgreSQL. */
 interface WorkspaceStorePort {
+    val mode: String get() = "LOCAL_PERSISTENT"
     fun read(tenantId: String): PersistedWorkspace
     fun mutate(tenantId: String, expectedVersion: Long, key: String, fingerprint: String, mutation: (PersistedWorkspace) -> Unit): PersistedWorkspace
+    fun readAuthorized(actor: Actor): PersistedWorkspace = read(actor.tenantId)
+    fun mutateAuthorized(actor: Actor, expectedVersion: Long, key: String, fingerprint: String,
+        lease: WorkspaceOperationLease? = null, mutation: (PersistedWorkspace) -> Unit): PersistedWorkspace =
+        mutate(actor.tenantId, expectedVersion, key, fingerprint, mutation)
+    fun reserveExternalOperation(actor: Actor, expectedVersion: Long, key: String, fingerprint: String,
+        kind: String): WorkspaceOperationReservation = WorkspaceOperationReservation(WorkspaceOperationStatus.ACQUIRED,
+            WorkspaceOperationLease(java.util.UUID.randomUUID().toString(), java.util.UUID.randomUUID().toString()))
+    fun markOperationUnknown(actor: Actor, lease: WorkspaceOperationLease) {}
 }
+
+/** Called inside the same PostgreSQL transaction as the protected read/commit. */
+fun interface WorkspaceTransactionAccessPort {
+    fun checkCurrent(actor: Actor, write: Boolean)
+}
+
+enum class WorkspaceOperationStatus { ACQUIRED, COMPLETED, IN_PROGRESS, UNKNOWN }
+data class WorkspaceOperationLease(val operationId: String, val token: String)
+data class WorkspaceOperationReservation(val status: WorkspaceOperationStatus, val lease: WorkspaceOperationLease? = null)
 
 class LocalWorkspaceStore(private val root: Path) : WorkspaceStorePort {
     private val mapper = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()

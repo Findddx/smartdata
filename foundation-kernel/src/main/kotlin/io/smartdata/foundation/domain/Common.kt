@@ -23,6 +23,8 @@ data class Actor(
     val displayName: String,
     val tenantId: String,
     val roles: Set<BusinessRole>,
+    // Enterprise requests pin the current membership revision; local/demo actors have no revision.
+    val authorizationVersion: Long? = null,
 ) {
     init {
         require(id.isNotBlank()) { "actor id is required" }

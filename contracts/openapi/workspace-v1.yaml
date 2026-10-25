@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
-  title: SmartData local workspace API
-  version: 1.2.0
+  title: SmartData workspace API
+  version: 1.3.0
   license: { name: Apache-2.0, identifier: Apache-2.0 }
   description: >-
-    本地工作区的只读来源接入、数据盘点、证据和人员协作契约。仅在显式 local profile
-    启用，持久化到客户本机文件；这是本地单实例能力，不是生产多租户部署承诺。
+    来源接入、盘点、证据和人员协作契约。显式 local profile 为文件保存与演示身份；
+    enterprise,postgres 为真实登录与共享数据库，当前每个数据平面固定一家企业。
+    部署能力由服务端返回，企业模式首期仅支持获准上传的有界 JSON 完整快照与规则助手。
+    企业身份与成员协议见 enterprise-v1.yaml；所有企业 POST 还要求 /me 返回的 CSRF 头。
     助手默认使用确定性规则；显式配置模型时通过 Spring AI 处理服务端筛选后的证据，
     返回明确的方法、成功或失败状态、不确定性和版本追踪。本端连接器只发送读取请求，未提供业务写入方法。
     本地演示身份可由操作者切换，不构成真实双人审批或企业身份认证的证明。
@@ -14,6 +16,7 @@ info:
 servers:
   - url: /api/v1
 security:
+  - sessionCookie: []
   - {}
   - localActor: []
 tags:
@@ -252,6 +255,11 @@ paths:
         default: { $ref: './smartdata-v1.yaml#/components/responses/Problem' }
 components:
   securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-SMARTDATA_SESSION
+      description: 企业模式由服务器签发；实际角色和撤权状态按当前企业目录检查。不得与本机演示权限混用。
     localActor:
       type: apiKey
       in: header

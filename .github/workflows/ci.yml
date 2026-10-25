@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
 
 permissions:
   contents: read
@@ -181,6 +181,12 @@ jobs:
               for key in totals:
                   totals[key] += int(suite.get(key, "0"))
           output = "\n".join(ElementTree.parse(path).getroot().findtext("system-out", "") for path in reports)
+          required_suites = {"EnterpriseHttpsIntegrationTest", "EnterpriseDirectoryIntegrationTest", "PostgresWorkspaceIntegrationTest", "PostgresPersistenceIntegrationTest"}
+          executed_suites = {ElementTree.parse(path).getroot().get("name", "").rsplit(".", 1)[-1] for path in reports}
+          if required_suites - executed_suites:
+              raise SystemExit(f"Missing required enterprise/database suites: {required_suites - executed_suites}")
+          if "ENTERPRISE_HTTPS_OIDC_PKCE_SHARED_SESSION_RESTART_MEMBER_REVOCATION=PASS" not in output:
+              raise SystemExit("Real HTTPS/OIDC/membership/shared-session/restart story must execute and pass")
           if (
               "POSTGRESQL_INTEGRATION_PROVIDER=TESTCONTAINERS_POSTGRES_18_6" not in output
               or "POSTGRESQL_INTEGRATION_DISTRIBUTION=SMARTDATA_ALPINE_3_24_R1" not in output
@@ -429,7 +435,7 @@ jobs:
           retention-days: 7
       - name: Scan dependencies and configuration
         # Build tools can affect shipped assets; include npm/Gradle development dependencies too.
-        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.74.0 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --include-dev-deps --ignore-unfixed --ignore-policy /repo/.github/trivy-demo-flags.rego --exit-code 1 /repo
+        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.74.0 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --include-dev-deps --ignore-policy /repo/.github/trivy-demo-flags.rego --exit-code 1 /repo
       - name: Ensure the demo flag exception still rejects secret instructions
         if: always()
         shell: bash

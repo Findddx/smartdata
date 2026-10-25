@@ -19,7 +19,9 @@ export function SourceDialog({
   pending,
   error,
   replaceSource,
+  allowedKinds,
 }: {
+  allowedKinds?: SourceKind[];
   version: number;
   onClose: () => void;
   onSubmit: (draft: SourceDraft) => void;
@@ -43,6 +45,8 @@ export function SourceDialog({
     event.preventDefault();
     setLocalError("");
     try {
+      if (allowedKinds && !allowedKinds.includes(kind))
+        throw new Error("当前部署未启用此接入方式。");
       const draft: SourceDraft = {
         expectedStateVersion: version,
         name: name.trim(),
@@ -116,19 +120,21 @@ export function SourceDialog({
                   icon: Database,
                 },
               ] as const
-            ).map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={kind === item.id ? "is-selected" : ""}
-                onClick={() => setKind(item.id)}
-                aria-pressed={kind === item.id}
-              >
-                <item.icon size={21} />
-                <strong>{item.label}</strong>
-                <small>{item.hint}</small>
-              </button>
-            ))}
+            )
+              .filter((item) => !allowedKinds || allowedKinds.includes(item.id))
+              .map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={kind === item.id ? "is-selected" : ""}
+                  onClick={() => setKind(item.id)}
+                  aria-pressed={kind === item.id}
+                >
+                  <item.icon size={21} />
+                  <strong>{item.label}</strong>
+                  <small>{item.hint}</small>
+                </button>
+              ))}
           </div>
         )}
         <label>

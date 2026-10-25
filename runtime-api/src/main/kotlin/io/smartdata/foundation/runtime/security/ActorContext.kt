@@ -41,7 +41,7 @@ class LocalActorContextResolver : ActorContextResolver {
 }
 
 @Component
-@Profile("!local")
+@Profile("!local & !enterprise")
 class JwtActorContextResolver(
     @param:Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private val requiredIssuer: String,

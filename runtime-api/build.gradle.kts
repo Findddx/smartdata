@@ -19,6 +19,10 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
 }
 
+springBoot {
+    mainClass.set("io.smartdata.foundation.runtime.RuntimeApiApplicationKt")
+}
+
 dependencies {
     implementation(project(":foundation-kernel"))
     implementation(platform(libs.spring.boot.bom))
@@ -32,6 +36,8 @@ dependencies {
     implementation(libs.spring.boot.validation)
     implementation(libs.spring.boot.security)
     implementation(libs.spring.boot.oauth2.resource.server)
+    implementation(libs.spring.boot.oauth2.client)
+    implementation(libs.spring.boot.session.jdbc)
     implementation(libs.spring.boot.actuator)
     implementation(libs.spring.boot.jdbc)
     implementation("org.jooq:jooq")
@@ -57,6 +63,28 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register<JavaExec>("prepareEnterpriseDatabase") {
+    group = "application"
+    description = "Applies versioned migrations and minimal enterprise grants using operator-only environment credentials."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("io.smartdata.foundation.runtime.operations.EnterpriseDatabaseSetup")
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+}
+
+// A downloadable product can serve the already-built console from the same TLS
+// origin as its login/session APIs. Do not install mutable npm packages in Gradle.
+if (providers.gradleProperty("bundleConsole").map(String::toBooleanStrict).orElse(false).get()) {
+    val consoleOutput = rootProject.layout.projectDirectory.dir("console/dist")
+    tasks.processResources {
+        from(consoleOutput) { into("static"); exclude("**/*.map") }
+        doFirst {
+            check(consoleOutput.file("index.html").asFile.isFile) {
+                "Build the locked console with npm ci --ignore-scripts && npm run build before -PbundleConsole=true"
+            }
+        }
+    }
 }
 
 // Real PostgreSQL checks are a separate mandatory CI gate. Unit tests must not

@@ -58,9 +58,11 @@ export function GraphView({
   pending,
   onSave,
   artRef,
+  demoAllowed = true,
 }: {
   workspace: WorkspaceState;
   canEdit: boolean;
+  demoAllowed?: boolean;
   onAsset: (asset: WorkspaceAsset) => void;
   navigate: (view: WorkspaceViewId) => void;
   onConnect: () => void;
@@ -739,7 +741,7 @@ export function GraphView({
                   {workspace.sources.length ? "调整本轮范围" : "连接数据"}
                   <ArrowRight size={14} />
                 </button>
-                {!workspace.sources.length && (
+                {demoAllowed && !workspace.sources.length && (
                   <button
                     type="button"
                     className="sd-button sd-quiet"

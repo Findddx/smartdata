@@ -1,0 +1,250 @@
+{
+  "verifiedAtUtc": "2026-10-25T18:00:35.9806100Z",
+  "method": "Independent SHA-256 of Maven Central HTTPS artifacts; no redirects; existing hashes unchanged",
+  "scope": "Added Maven artifacts only; each was independently fetched over verified HTTPS from Maven Central. POM license declarations are recorded when present; Spring module licenses follow their published Apache-2.0 projects. Existing trusted hashes were neither replaced nor removed. This is dependency provenance, not runtime security or production acceptance.",
+  "artifactCount": 29,
+  "artifacts": [
+    {
+      "component": "com.github.stephenc.jcip:jcip-annotations:1.0-1",
+      "artifact": "jcip-annotations-1.0-1.jar",
+      "sha256": "4fccff8382aafc589962c4edb262f6aa595e34f1e11e61057d1c6a96e8fc7323",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/stephenc/jcip/jcip-annotations/1.0-1/jcip-annotations-1.0-1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.github.stephenc.jcip:jcip-annotations:1.0-1",
+      "artifact": "jcip-annotations-1.0-1.pom",
+      "sha256": "68c2a5aa6e8f345743093e52b5b9e0190ba4d5a5215c0a59b4d7d33647208cbb",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/github/stephenc/jcip/jcip-annotations/1.0-1/jcip-annotations-1.0-1.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.nimbusds:content-type:2.3",
+      "artifact": "content-type-2.3.jar",
+      "sha256": "60349793e006fba96b532cb0c21e10e969fe0db8d87f91c3b9eaf82ba2998895",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/content-type/2.3/content-type-2.3.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.nimbusds:content-type:2.3",
+      "artifact": "content-type-2.3.pom",
+      "sha256": "cb69e6da161f7e51166876b6f5991fd135b46b1118c1b6514aaec8cb2426b7c7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/content-type/2.3/content-type-2.3.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.nimbusds:lang-tag:1.7",
+      "artifact": "lang-tag-1.7.jar",
+      "sha256": "e8c1c594e2425bdbea2d860de55c69b69fc5d59454452449a0f0913c2a5b8a31",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/lang-tag/1.7/lang-tag-1.7.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.nimbusds:lang-tag:1.7",
+      "artifact": "lang-tag-1.7.pom",
+      "sha256": "824b0d7de7827abfc6a47e6ef94b0ffaa138fef38af08c56a27f5d3a1522119e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/lang-tag/1.7/lang-tag-1.7.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.nimbusds:oauth2-oidc-sdk:11.38.2",
+      "artifact": "oauth2-oidc-sdk-11.38.2.jar",
+      "sha256": "30e63220c15bd93006c557bd0d614bb57a5f00232188693577c222383ea4bbe7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/oauth2-oidc-sdk/11.38.2/oauth2-oidc-sdk-11.38.2.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.nimbusds:oauth2-oidc-sdk:11.38.2",
+      "artifact": "oauth2-oidc-sdk-11.38.2.pom",
+      "sha256": "df062d8bc65a6c7d03e1a1244aa4da6bb0f1418cdb00f6e7d521fb800904db6e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/nimbusds/oauth2-oidc-sdk/11.38.2/oauth2-oidc-sdk-11.38.2.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, version 2.0"
+      ]
+    },
+    {
+      "component": "commons-logging:commons-logging:1.4.0",
+      "artifact": "commons-logging-1.4.0.jar",
+      "sha256": "d175dbd751dd782a63bde28c7a039520e971f25e84b79c19b8435edc3603e0dc",
+      "officialUrl": "https://repo.maven.apache.org/maven2/commons-logging/commons-logging/1.4.0/commons-logging-1.4.0.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "commons-logging:commons-logging:1.4.0",
+      "artifact": "commons-logging-1.4.0.pom",
+      "sha256": "92d9c735808eda632a214c7f2c1640266cfc7269c3a63fd2346e15c988aeb11e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/commons-logging/commons-logging/1.4.0/commons-logging-1.4.0.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.apache.commons:commons-parent:102",
+      "artifact": "commons-parent-102.pom",
+      "sha256": "1a3775fa4b265910941ca7f09c6b0df4b30f61e301f03dbebbfd35c49ca740af",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/commons/commons-parent/102/commons-parent-102.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.junit:junit-bom:5.14.3",
+      "artifact": "junit-bom-5.14.3.module",
+      "sha256": "f25c40bfa52c8b7b425d576a88f310f6432616d62ba5893203fa27dfbc9f025e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/junit/junit-bom/5.14.3/junit-bom-5.14.3.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.junit:junit-bom:5.14.3",
+      "artifact": "junit-bom-5.14.3.pom",
+      "sha256": "08a02856e487c9357f9b29e38745f8ae805848111e72d15aad0352338f1632e1",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/junit/junit-bom/5.14.3/junit-bom-5.14.3.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Eclipse Public License v2.0"
+      ]
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-security-oauth2-client:4.1.1",
+      "artifact": "spring-boot-security-oauth2-client-4.1.1.jar",
+      "sha256": "f194178e5ba4ea7e27b2c1ba172f4f4b9ebcce4abc7780c93b82ad45d0a2ba38",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-security-oauth2-client/4.1.1/spring-boot-security-oauth2-client-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-security-oauth2-client:4.1.1",
+      "artifact": "spring-boot-security-oauth2-client-4.1.1.module",
+      "sha256": "ce216b24d23ceade5199fb9b08efd91e520e0b9951ef3ed075585f2c1c40bc88",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-security-oauth2-client/4.1.1/spring-boot-security-oauth2-client-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-session:4.1.1",
+      "artifact": "spring-boot-session-4.1.1.jar",
+      "sha256": "2bb4ac8c9af285b1211b1dc40b5defb6088712aa5a8b03cc977d3030b62bdae7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-session/4.1.1/spring-boot-session-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-session:4.1.1",
+      "artifact": "spring-boot-session-4.1.1.module",
+      "sha256": "8057801b0c5931a2681d107d74c3fe2efa5f759cb9e8c62a7be3a100575f6576",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-session/4.1.1/spring-boot-session-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-session-jdbc:4.1.1",
+      "artifact": "spring-boot-session-jdbc-4.1.1.jar",
+      "sha256": "cac9f7402eecfd0ef282d6f358a514266e543292e242fbaf3bacab5762b4873a",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-session-jdbc/4.1.1/spring-boot-session-jdbc-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-session-jdbc:4.1.1",
+      "artifact": "spring-boot-session-jdbc-4.1.1.module",
+      "sha256": "9de9787053aa7b28aecf79086978c6a73d3fb0ce62172701f7e5e9f41bc811c5",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-session-jdbc/4.1.1/spring-boot-session-jdbc-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-starter-oauth2-client:4.1.1",
+      "artifact": "spring-boot-starter-oauth2-client-4.1.1.jar",
+      "sha256": "38d0ed03316db125a5122742495c90393e6cb0e22aac68064efba8543c3eac75",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-oauth2-client/4.1.1/spring-boot-starter-oauth2-client-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-starter-oauth2-client:4.1.1",
+      "artifact": "spring-boot-starter-oauth2-client-4.1.1.module",
+      "sha256": "d192cfeaa158b9c17036148dca1ed97343cf05e248f162156ac14561ca8a344a",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-oauth2-client/4.1.1/spring-boot-starter-oauth2-client-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-starter-session-jdbc:4.1.1",
+      "artifact": "spring-boot-starter-session-jdbc-4.1.1.jar",
+      "sha256": "be4339bb887f7b10be07f223844a07a1775371ae691a3da4176faaba605af464",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-session-jdbc/4.1.1/spring-boot-starter-session-jdbc-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.boot:spring-boot-starter-session-jdbc:4.1.1",
+      "artifact": "spring-boot-starter-session-jdbc-4.1.1.module",
+      "sha256": "241d022b51ceb8920386bf5b8673101a3e89f070785206e389875696193908a3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-session-jdbc/4.1.1/spring-boot-starter-session-jdbc-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.security:spring-security-oauth2-client:7.1.1",
+      "artifact": "spring-security-oauth2-client-7.1.1.jar",
+      "sha256": "d871b3571201c69e0142cca3a61fbcca4fd4ec9c0dedb21fdd4fe4a77ff9991d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/security/spring-security-oauth2-client/7.1.1/spring-security-oauth2-client-7.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.security:spring-security-oauth2-client:7.1.1",
+      "artifact": "spring-security-oauth2-client-7.1.1.module",
+      "sha256": "b729854fe744974ac708a2ac039b04dbeb2be106aae7f570c2241b75c247fe80",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/security/spring-security-oauth2-client/7.1.1/spring-security-oauth2-client-7.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.session:spring-session-core:4.1.1",
+      "artifact": "spring-session-core-4.1.1.jar",
+      "sha256": "01b836bfcc5b64f7039c3430980878112a10db5066eda4274a1d3eb874e49733",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/session/spring-session-core/4.1.1/spring-session-core-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.session:spring-session-core:4.1.1",
+      "artifact": "spring-session-core-4.1.1.module",
+      "sha256": "b55639e3cabc30283a887dfac19a064ed207a7c87eb013700c43460e6bb213e7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/session/spring-session-core/4.1.1/spring-session-core-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.session:spring-session-jdbc:4.1.1",
+      "artifact": "spring-session-jdbc-4.1.1.jar",
+      "sha256": "669e4388684949edb0c5aef0a7f4e15af86d6c87ffb90df3145f073746870529",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/session/spring-session-jdbc/4.1.1/spring-session-jdbc-4.1.1.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.springframework.session:spring-session-jdbc:4.1.1",
+      "artifact": "spring-session-jdbc-4.1.1.module",
+      "sha256": "cfd6638a539d29ab2892898caf9e03b6486c3a0633bc5f9d96cfd56164b52210",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/springframework/session/spring-session-jdbc/4.1.1/spring-session-jdbc-4.1.1.module",
+      "matches": true,
+      "declaredLicenses": []
+    }
+  ]
+}

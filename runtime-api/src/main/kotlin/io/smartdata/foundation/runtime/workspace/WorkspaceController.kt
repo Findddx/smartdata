@@ -64,7 +64,7 @@ class LocalWorkspaceConfiguration {
 
 @RestController
 @Validated
-@Profile("local")
+@Profile("local | enterprise")
 @RequestMapping("/api/v1/workspace")
 class WorkspaceController(
     private val service: WorkspaceService,

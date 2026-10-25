@@ -1,4 +1,7 @@
-// This flag enables local role rehearsal, not enterprise authentication.
+import { currentSession } from "../auth/transport";
+
+// Rehearsal is enabled only by the current server identity response.
 export function localRolesEnabled() {
-  return import.meta.env.DEV || import.meta.env.VITE_DEMO_AUTH === "true";
+  const me = currentSession();
+  return me?.mode === "LOCAL_DEMO" && me.capabilities.localRoleSwitch;
 }

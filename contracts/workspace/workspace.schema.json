@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://smartdata.dev/contracts/workspace-v1.schema.json",
-  "title": "SmartData local workspace v1",
-  "description": "Current local-profile read-only discovery and evidence-based collaboration contracts. Secrets and source row bodies must not appear in response views.",
+  "title": "SmartData workspace v1",
+  "description": "Local rehearsal and authenticated shared PostgreSQL workspaces. Deployment mode is explicit. Secrets and source row bodies must not appear in response views.",
   "$ref": "#/$defs/WorkspaceView",
   "$defs": {
     "Id": { "type": "string", "minLength": 1, "maxLength": 200 },
@@ -103,7 +103,7 @@
       "properties": {
         "businessBrief": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/BusinessBrief"}]},
 
-        "stateVersion": { "$ref": "#/$defs/Version" }, "mode": { "const": "LOCAL_PERSISTENT" },
+        "stateVersion": { "$ref": "#/$defs/Version" }, "mode": { "enum": ["LOCAL_PERSISTENT", "POSTGRES_SHARED"] },
         "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceView" } },
         "assets": { "type": "array", "items": { "$ref": "#/$defs/AssetView" } },
         "scans": { "type": "array", "items": { "$ref": "#/$defs/ScanView" } },

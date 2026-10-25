@@ -1,5 +1,5 @@
-import { Workspace } from "./workspace/Workspace";
+import { AuthGate } from "./auth/AuthGate";
 
 export function App() {
-  return <Workspace />;
+  return <AuthGate />;
 }

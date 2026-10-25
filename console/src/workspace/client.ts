@@ -9,7 +9,11 @@ import type {
   SaveLineageMappingsCommand,
   LineageFieldPage,
 } from "./types";
-import { localRolesEnabled } from "./localRoles";
+import {
+  notifyAuthorityChanged,
+  sessionHeaders,
+  sessionGeneration,
+} from "../auth/transport";
 
 const ROOT = "/api/v1/workspace";
 export class WorkspaceApiError extends Error {
@@ -22,10 +26,11 @@ export class WorkspaceApiError extends Error {
   }
 }
 async function request<T>(path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (localRolesEnabled())
-    headers["X-Demo-Actor"] =
-      localStorage.getItem("smartdata.localActor") ?? "admin";
+  const generation = sessionGeneration();
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...sessionHeaders(body !== undefined),
+  };
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
     headers["Idempotency-Key"] = crypto.randomUUID();
@@ -39,7 +44,13 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
       signal,
       credentials: "same-origin",
     });
+    if (generation !== sessionGeneration())
+      throw new WorkspaceApiError(
+        "登录状态已变化，已忽略之前请求的页面结果。请重新读取当前工作区。",
+        409,
+      );
     if (!response.ok) {
+      notifyAuthorityChanged(response.status);
       const problem = (await response.json().catch(() => ({}))) as {
         detail?: string;
       };
@@ -48,12 +59,21 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
         response.status,
       );
     }
-    return (await response.json()) as T;
+    const result = (await response.json()) as T;
+    if (generation !== sessionGeneration())
+      throw new WorkspaceApiError(
+        "登录状态已变化，已忽略之前请求的页面结果。请重新读取当前工作区。",
+        409,
+      );
+    return result;
   } catch (error) {
     if (error instanceof WorkspaceApiError) throw error;
     const timedOut =
       signal.aborted ||
-      (typeof error === "object" && error !== null && "name" in error && error.name === "TimeoutError");
+      (typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        error.name === "TimeoutError");
     throw new WorkspaceApiError(
       timedOut
         ? body === undefined

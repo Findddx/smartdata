@@ -27,21 +27,21 @@ class WorkspaceService(
     private val connectors = connectors.associateBy { it.kind }
     private val profiler = DeterministicAssetProfiler(clock)
 
-    fun view(actor: Actor): WorkspaceView = toView(store.read(actor.tenantId))
+    fun view(actor: Actor): WorkspaceView = toView(store.readAuthorized(actor))
 
     fun lineage(actor: Actor): LineageGraph {
         if (actor.roles.isEmpty()) throw AuthorizationDeniedException("血缘图只向已授权工作区身份开放")
-        return LineageProjection(clock).graph(store.read(actor.tenantId))
+        return LineageProjection(clock).graph(store.readAuthorized(actor))
     }
 
     fun lineageMappings(actor: Actor): LineageMappings {
         requireAdministrator(actor)
-        return store.read(actor.tenantId).lineageMappings
+        return store.readAuthorized(actor).lineageMappings
     }
 
     fun lineageFields(actor: Actor, sourceId: String, assetId: String, offset: Int, limit: Int): LineageFieldPage {
         if (actor.roles.isEmpty()) throw AuthorizationDeniedException("字段元数据只向已授权工作区身份开放")
-        return LineageProjection(clock).fields(store.read(actor.tenantId), sourceId, assetId, offset, limit)
+        return LineageProjection(clock).fields(store.readAuthorized(actor), sourceId, assetId, offset, limit)
     }
 
     fun saveLineageMappings(actor: Actor, key: String, body: SaveLineageMappingsCommand): WorkspaceView {
@@ -55,7 +55,7 @@ class WorkspaceService(
     }
 
     fun businessBriefHistory(actor: Actor): List<BusinessBrief> {
-        val state = store.read(actor.tenantId)
+        val state = store.readAuthorized(actor)
         return (state.businessBriefHistory.ifEmpty { listOfNotNull(state.businessBrief) })
             .map(::safeBriefView)
     }
@@ -118,6 +118,7 @@ class WorkspaceService(
 
     fun createSource(actor: Actor, key: String, body: CreateSourceCommand): WorkspaceView {
         requireAdministrator(actor)
+        require(body.kind in capabilities.sourceKinds) { "此部署未授权该来源类型" }
         require(body.name.isNotBlank() && body.name.length <= 100) { "来源名称需为 1–100 个字符" }
         require(body.freshnessMaxHours in 1..8760) { "新鲜度阈值需为 1–8760 小时" }
         require(body.primaryKey == null || body.primaryKey.length in 1..128)
@@ -160,7 +161,7 @@ class WorkspaceService(
 
     fun scan(actor: Actor, sourceId: String, key: String, body: VersionCommand): WorkspaceView {
         requireEditor(actor)
-        val before = store.read(actor.tenantId)
+        val before = store.readAuthorized(actor)
         val durableFingerprint = fingerprint(actor, "source.scanned", sourceId, body)
         // A restart replay must not cause another remote GET or scan.
         before.commands[digest("${actor.tenantId}\u0000$key")]?.let { previous ->
@@ -170,6 +171,7 @@ class WorkspaceService(
         if (before.stateVersion != body.expectedStateVersion) throw OptimisticStateException("workspace", actor.tenantId, body.expectedStateVersion, before.stateVersion)
         val source = findSource(before, sourceId)
         require(source.status != SourceStatus.DISCONNECTED) { "来源授权已撤销，不能继续扫描" }
+        return runReserved(actor, body.expectedStateVersion, key, durableFingerprint, "SOURCE_SCAN") { lease ->
         val startedAt = now()
         val scanId = id("scan")
         var failure: String? = null
@@ -183,7 +185,7 @@ class WorkspaceService(
             emptyList()
         }
         val profiles = if (failure == null) observations.map { profiler.profile(source, it, scanId) } else emptyList()
-        return mutate(actor, key, body.expectedStateVersion, "source.scanned", sourceId, body) { state ->
+        mutate(actor, key, body.expectedStateVersion, "source.scanned", sourceId, body, lease) { state ->
             require(state.scans.size < 1000) { "本地工作区扫描记录达到 1000 条上限" }
             if (failure == null) {
                 val historical = state.findings.map { if (it.sourceId == sourceId) it.copy(active = false) else it }
@@ -200,9 +202,11 @@ class WorkspaceService(
                 lastScannedAt = completedAt, lastError = failure, stateVersion = it.stateVersion + 1) }
             if (state.assistants.isNotEmpty() && failure == null) synchronizeTasks(state)
         }
+        }
     }
 
     fun bootstrapDemo(actor: Actor, key: String, body: VersionCommand): WorkspaceView {
+        require(store.mode == "LOCAL_PERSISTENT") { "企业工作区不能加载演示来源" }
         requireEditor(actor)
         return mutate(actor, key, body.expectedStateVersion, "demo.loaded", "demo", body) { state ->
             require(state.sources.isEmpty()) { "演示只能加载到空工作区；不会与用户来源混合" }
@@ -237,6 +241,7 @@ class WorkspaceService(
     }
 
     fun resetDemo(actor: Actor, key: String, body: VersionCommand): WorkspaceView {
+        require(store.mode == "LOCAL_PERSISTENT") { "企业工作区不能执行演示清空" }
         requireEditor(actor)
         return mutate(actor, key, body.expectedStateVersion, "demo.cleared", "demo", body) { state ->
             require(state.sources.isNotEmpty() && state.sources.all { it.provenance == Provenance.DEMO }) { "仅可清空纯演示工作区" }
@@ -283,7 +288,10 @@ class WorkspaceService(
                 }
                 TaskStatus.VERIFIED -> {
                     requireReviewer(actor)
-                    require(task.status == TaskStatus.COMPLETED && task.ownerId != actor.id) { "必须使用不同于任务完成身份的本地复核身份；演示身份不代表真实双人审批" }
+                    require(task.status == TaskStatus.COMPLETED && task.ownerId != actor.id) {
+                        if (store.mode == "LOCAL_PERSISTENT") "必须使用不同于任务完成身份的本地复核身份；演示身份不代表真实双人审批"
+                        else "必须由不同于任务完成者的当前有效成员账号复核；改变角色不能让同一账号自审"
+                    }
                     verifyTask(state, task, body.evidenceRefs)
                     task.copy(status = TaskStatus.VERIFIED, verifiedBy = actor.id, evidenceRefs = (task.evidenceRefs + body.evidenceRefs).distinct())
                 }
@@ -312,7 +320,7 @@ class WorkspaceService(
     fun message(actor: Actor, assistantId: String, key: String, body: AssistantMessageCommand): WorkspaceView {
         requireEditor(actor)
         require(body.question.isNotBlank() && body.question.length <= 2000) { "问题需为 1–2000 个字符" }
-        val before = store.read(actor.tenantId)
+        val before = store.readAuthorized(actor)
         before.commands[digest("${actor.tenantId}\u0000$key")]?.let { previous ->
             if (previous != fingerprint(actor, "assistant.message_answered", assistantId, body)) throw IdempotencyConflictException()
             return toView(before)
@@ -326,11 +334,12 @@ class WorkspaceService(
             .filter { task == null || BusinessBriefPlanner.taskId(it) == task.id }.take(5)
         // A future network/model call runs outside the store lock. Commit CAS
         // rejects the result if the workspace evidence changed meanwhile.
+        return runReserved(actor, body.expectedStateVersion, key, fingerprint(actor, "assistant.message_answered", assistantId, body), "MODEL_REASONING") { lease ->
         val result = try {
             reasoning.respond(AssistantReasoningContext(actor.tenantId, assistantId, assistant.role,
                 assistant.responsibility, body.question, before.stateVersion, selected))
         } catch (failure: AssistantReasoningException) {
-            return mutate(actor, key, body.expectedStateVersion, "assistant.message_answered", assistantId, body) { state ->
+            return@runReserved mutate(actor, key, body.expectedStateVersion, "assistant.message_answered", assistantId, body, lease) { state ->
                 state.messages += AssistantMessage(id("message"), assistantId, actor.id,
                     if (failure.redactQuestion) "提问命中服务端敏感信息保护，正文未保存。" else body.question,
                     failure.userMessage, emptyList(), now(), reasoning.method, "FAILED",
@@ -345,14 +354,15 @@ class WorkspaceService(
         require(selected.isEmpty() || result.evidenceRefs.isNotEmpty()) { "有证据的助手答复必须保留来源引用" }
         require(result.uncertainty.size <= 8 && result.uncertainty.all { it.isNotBlank() && it.length <= 1000 }) { "助手不确定性说明超出范围" }
         if (result.method == "SPRING_AI_EVIDENCE_V1") require(result.trace != null && result.evidenceRefs.isNotEmpty()) { "模型答复必须保留模型版本和证据" }
-        return mutate(actor, key, body.expectedStateVersion, "assistant.message_answered", assistantId, body) { state ->
+        mutate(actor, key, body.expectedStateVersion, "assistant.message_answered", assistantId, body, lease) { state ->
             state.messages += AssistantMessage(id("message"), assistantId, actor.id, body.question, result.answer,
                 result.evidenceRefs.distinct(), now(), result.method, uncertainty = result.uncertainty, trace = result.trace)
+        }
         }
     }
 
     fun report(actor: Actor): WorkspaceReport {
-        val state = store.read(actor.tenantId)
+        val state = store.readAuthorized(actor)
         val findings = state.findings.filter { it.active }
         val failures = state.sources.count { it.status == SourceStatus.FAILED }
         val brief = state.businessBrief
@@ -373,8 +383,11 @@ class WorkspaceService(
         return WorkspaceReport(now(), state.stateVersion, "DETERMINISTIC_EVIDENCE_REPORT_V1", "智能数据基座 · 可核对的工作区报告", businessSections + listOf(
             ReportSection("观察范围", "已登记 ${state.sources.size} 个来源，观察 ${state.assets.size} 个资产、${state.assets.sumOf { it.rowCount }} 行。${state.sources.count { it.provenance == Provenance.DEMO }} 个为演示来源；$failures 个来源最近扫描失败。所有判断只覆盖采样范围。"),
             ReportSection("发现的问题", if (findings.isEmpty()) "没有有效问题记录不等于系统健康；需结合接入覆盖面和样本边界判断。" else findings.joinToString("\n") { "${it.title}：${it.observed}。依据 ${it.ruleId}，证据 ${it.evidence.sha256.take(16)}。" }),
-            ReportSection("协作进度", "已建立 ${state.assistants.size} 位职责助手，${state.tasks.size} 项任务，其中 ${state.tasks.count { it.status == TaskStatus.VERIFIED }} 项经不同本地演示身份结合新扫描证据复核。演示身份可由同一操作者切换，不构成真实双人审批证明。"),
-            ReportSection("能力边界", "当前为本地文件持久化；助手方法为 ${reasoning.method}。规则模式未调用模型；模型模式只解释获准的问题摘要，失败会单独记录，模型自述不能验证任务成功。本端仅发出只读请求，没有发出来源写入命令；这不能单独证明外部系统未发生变化。未测量真实收益、全库质量、业务因果或企业部署容量。"),
+            ReportSection("协作进度", "已建立 ${state.assistants.size} 位职责助手，${state.tasks.size} 项任务，其中 ${state.tasks.count { it.status == TaskStatus.VERIFIED }} 项" +
+                if (store.mode == "LOCAL_PERSISTENT") "经不同本地演示身份结合新扫描证据复核。演示身份可由同一操作者切换，不构成真实双人审批证明。"
+                else "由不同成员账号结合新快照证据复核。账号不同不单独证明账号背后一定是不同自然人，企业仍需管理人员身份与账号使用。"),
+            ReportSection("能力边界", (if (store.mode == "LOCAL_PERSISTENT") "当前为本地文件持久化；" else "当前为有界 PostgreSQL 共享工作区，仅支持上传的 JSON 完整快照；未接对象存储或持续同步；") +
+                "助手方法为 ${reasoning.method}。规则模式未调用模型；模型模式只解释获准的问题摘要，失败会单独记录，模型自述不能验证任务成功。本端没有发出来源写入命令；这不能单独证明外部系统未发生变化。未测量真实收益、全库质量、业务因果或企业部署容量。全工作区版本冲突需要刷新重试，不自动合并无关评论。"),
         ), findings.map { it.id })
     }
 
@@ -486,12 +499,28 @@ class WorkspaceService(
         require(references.all { it in known }) { "引用必须来自同一工作区中已记录的问题、资产或盘点" }
     }
 
-    private fun mutate(actor: Actor, key: String, expected: Long, event: String, resourceId: String, body: Any, operation: (PersistedWorkspace) -> Unit): WorkspaceView =
-        toView(store.mutate(actor.tenantId, expected, key, fingerprint(actor, event, resourceId, body)) { state ->
+    private fun mutate(actor: Actor, key: String, expected: Long, event: String, resourceId: String, body: Any, lease: WorkspaceOperationLease? = null, operation: (PersistedWorkspace) -> Unit): WorkspaceView =
+        toView(store.mutateAuthorized(actor, expected, key, fingerprint(actor, event, resourceId, body), lease) { state ->
             require(state.comments.size < 10000 && state.messages.size < 10000) { "本地协作记录已达上限，请迁移持久化适配器" }
             operation(state)
             state.audit += WorkspaceAudit(id("audit"), actor.id, event, resourceId, now(), state.stateVersion + 1)
         })
+
+    private fun runReserved(actor: Actor, expected: Long, key: String, fingerprint: String, kind: String,
+        run: (WorkspaceOperationLease) -> WorkspaceView): WorkspaceView {
+        val reservation = store.reserveExternalOperation(actor, expected, key, fingerprint, kind)
+        when (reservation.status) {
+            WorkspaceOperationStatus.COMPLETED -> return toView(store.readAuthorized(actor))
+            WorkspaceOperationStatus.IN_PROGRESS -> throw BusinessValidationException("相同操作仍在处理，请等待后刷新；未重复调用来源或模型")
+            WorkspaceOperationStatus.UNKNOWN -> throw BusinessValidationException("该操作的外部结果无法确定，必须先对账；不会盲目重复调用或收费")
+            WorkspaceOperationStatus.ACQUIRED -> Unit
+        }
+        val lease = requireNotNull(reservation.lease)
+        return try { run(lease) } catch (failure: Throwable) {
+            try { store.markOperationUnknown(actor, lease) } catch (recordFailure: Exception) { failure.addSuppressed(recordFailure) }
+            throw failure
+        }
+    }
 
     private fun fingerprint(actor: Actor, event: String, resourceId: String, body: Any) = commandFingerprint(
         actor.id, actor.roles.map { it.name }.sorted(), event, if (event == "source.created") "new-source" else resourceId, body,
@@ -499,7 +528,7 @@ class WorkspaceService(
 
     private fun toView(state: PersistedWorkspace): WorkspaceView {
         val planner = BusinessBriefPlanner(state)
-        return WorkspaceView(state.stateVersion, sources = state.sources.map { source ->
+        return WorkspaceView(state.stateVersion, mode = store.mode, sources = state.sources.map { source ->
         SourceView(source.id, source.name, source.kind, source.provenance, source.status,
             source.endpoint?.let { endpoint -> try { val uri = URI.create(endpoint.removePrefix("jdbc:")); "${uri.host}${if (uri.port >= 0) ":${uri.port}" else ""}${uri.path}" } catch (_: Exception) { "已配置端点" } },
             source.lastScannedAt, state.assets.count { it.sourceId == source.id }, source.credentialEnvRef != null, source.stateVersion, source.lastError)

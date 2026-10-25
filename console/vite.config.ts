@@ -11,6 +11,9 @@ export default defineConfig({
         target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080',
         changeOrigin: false,
       },
+      '/oauth2': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
+      '/login': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
+      '/logout': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
     },
   },
   server: {
@@ -21,6 +24,9 @@ export default defineConfig({
         target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080',
         changeOrigin: false,
       },
+      '/oauth2': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
+      '/login': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
+      '/logout': { target: process.env.SMARTDATA_API_ORIGIN ?? 'http://127.0.0.1:8080', changeOrigin: false },
     },
   },
   build: {

@@ -114,6 +114,6 @@ class PostgresUnitOfWork(private val dataSource: DataSource, private val queryTi
             "memory_asset","outbox_event","inbox_event","audit_event","command_deduplication",
             "case_claim_link","case_gap_link","claim_evidence_link","claim_revision","claim_revision_evidence_link","recommendation_evidence_link","action_evidence_link","receipt_attempt",
             "verification_revision","verification_assertion","verification_evidence_link","verification_gap_link","verification_metric",
-            "memory_case_link","memory_evidence_link")
+            "memory_case_link","memory_evidence_link","enterprise_account","enterprise_directory","enterprise_member","enterprise_invitation","enterprise_command") + io.smartdata.foundation.runtime.workspace.postgres.PostgresWorkspaceStore.OWNED_TABLES
     }
 }

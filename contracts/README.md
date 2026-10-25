@@ -45,6 +45,11 @@ node scripts/validate-lineage.mjs --response ..\.local\field-page.json FieldPage
 
 ## 本地工作区的真实 HTTP 冒烟
 
+企业身份协议另见 `openapi/enterprise-v1.yaml` 和 `enterprise/enterprise-v1.schema.json`。
+`npm run validate` 同时编译其15类定义并拒绝27种无效或矛盾输入；可用
+`node scripts/validate-enterprise.mjs --response <私有响应文件> Me` 核对真实输出。
+Schema 检查能发现协议漂移，真实登录、当前撤权和数据库恢复仍需实际服务验证。
+
 `openapi/workspace-v1.yaml` 与 `workspace/workspace.schema.json` 覆盖新增的来源、
 盘点、规则发现、助手、协作任务及版本化业务约定。`npm run validate` 编译所有定义，
 并用正常请求、凭据泄漏、缺失证据、伪造助手方法、跨租户字段、伪造口径确认和

@@ -38,6 +38,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
 @Validated
 @RestController
+@Profile("local")
 @RequestMapping("/api/v1")
 class FoundationController(
     private val kernel: FoundationKernel,

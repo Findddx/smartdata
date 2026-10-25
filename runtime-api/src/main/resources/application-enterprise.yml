@@ -1,0 +1,54 @@
+# Selected only with enterprise,postgres. Credentials come from the deployment's
+# private environment/secret mount; no migration credential is consumed here.
+spring:
+  datasource:
+    url: ${SMARTDATA_DB_URL}
+    username: ${SMARTDATA_DB_USER}
+    password: ${SMARTDATA_DB_PASSWORD}
+  flyway:
+    enabled: false
+  session:
+    jdbc:
+      initialize-schema: never
+  security:
+    oauth2:
+      client:
+        registration:
+          enterprise:
+            provider: enterprise
+            client-id: ${SMARTDATA_OIDC_CLIENT_ID}
+            client-secret: ${SMARTDATA_OIDC_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            scope: openid,profile
+        provider:
+          enterprise:
+            issuer-uri: ${SMARTDATA_OIDC_ISSUER}
+
+server:
+  address: ${SMARTDATA_BIND_ADDRESS:127.0.0.1}
+  port: ${SMARTDATA_PORT:8080}
+  ssl:
+    enabled: true
+    key-store: ${SMARTDATA_TLS_KEYSTORE}
+    key-store-type: PKCS12
+    key-store-password: ${SMARTDATA_TLS_KEYSTORE_PASSWORD}
+    key-alias: ${SMARTDATA_TLS_KEY_ALIAS:localhost}
+
+smartdata:
+  persistence:
+    enabled: true
+  enterprise:
+    enabled: true
+    tenant-id: ${SMARTDATA_ENTERPRISE_TENANT_ID}
+    tenant-display-name: ${SMARTDATA_ENTERPRISE_NAME}
+    issuer-uri: ${SMARTDATA_OIDC_ISSUER}
+    client-id: ${SMARTDATA_OIDC_CLIENT_ID}
+    audience: ${SMARTDATA_API_AUDIENCE:smartdata-runtime}
+    external-base-url: ${SMARTDATA_EXTERNAL_BASE_URL}
+    bootstrap-owners: ${SMARTDATA_ENTERPRISE_BOOTSTRAP_OWNERS:}
+  session:
+    datasource:
+      url: ${SMARTDATA_DB_URL}
+      username: ${SMARTDATA_SESSION_DB_USER}
+      password: ${SMARTDATA_SESSION_DB_PASSWORD}
+    encryption-key: ${SMARTDATA_SESSION_ENCRYPTION_KEY}

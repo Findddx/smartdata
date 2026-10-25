@@ -35,6 +35,7 @@ import {
   Workflow,
   GitBranch,
   PanelLeft,
+  LogOut,
   X,
 } from "lucide-react";
 import {
@@ -47,9 +48,15 @@ import {
   type FormEvent,
 } from "react";
 import { workspaceClient } from "./client";
+import { sessionGeneration } from "../auth/transport";
 import { LiquidMaterial } from "../materials/LiquidMaterial";
 import { SmartDataMark } from "../brand/SmartDataMark";
-import { localRolesEnabled } from "./localRoles";
+const MembersPage = lazy(() =>
+  import("../auth/MembersPage").then((module) => ({
+    default: module.MembersPage,
+  })),
+);
+import { ROLE_LABELS, workspacePermissions, type MeView } from "../auth/types";
 import {
   BusinessBriefPage,
   type BusinessEditorSnapshot,
@@ -95,6 +102,7 @@ const NAV = [
   { id: "team", label: "服务团队", icon: UsersRound },
   { id: "tasks", label: "协作任务", icon: ListChecks },
   { id: "business", label: "业务约定", icon: Target },
+  { id: "members", label: "企业成员", icon: UsersRound },
 ] as const;
 const TITLES: Record<WorkspaceViewId, string> = {
   graph: "数据图谱",
@@ -107,6 +115,7 @@ const TITLES: Record<WorkspaceViewId, string> = {
   tasks: "协作任务",
   settings: "空间设置",
   fulfillment: "履约专项",
+  members: "企业成员",
 };
 const ROLE = {
   OPERATIONS: {
@@ -227,8 +236,26 @@ function firstView(): WorkspaceViewId {
     : "graph";
 }
 
-export function Workspace() {
+export function Workspace({
+  identity,
+  onLocalActorChange,
+  onIdentityRefresh,
+  onLogout,
+}: {
+  identity: MeView;
+  onLocalActorChange: (actor: string) => Promise<unknown>;
+  onIdentityRefresh: () => Promise<unknown>;
+  onLogout: () => Promise<unknown>;
+}) {
   const queryClient = useQueryClient();
+  const live = useRef(true);
+  const mountedGeneration = useRef(sessionGeneration()).current;
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
   const reduce = useReducedMotion();
   const [view, setView] = useState<WorkspaceViewId>(firstView);
   const [theme, setTheme] = useState(() => {
@@ -259,11 +286,10 @@ export function Workspace() {
   const [resetOpen, setResetOpen] = useState(false);
   const [disconnectSource, setDisconnectSource] =
     useState<WorkspaceSource | null>(null);
-  const [localActor, setLocalActor] = useState(() =>
-    localRolesEnabled()
-      ? (localStorage.getItem("smartdata.localActor") ?? "admin")
-      : "order-specialist",
-  );
+  const localActor = identity.accountId ?? "";
+  const permissions = workspacePermissions(identity);
+  const isLocal = identity.mode === "LOCAL_DEMO";
+  const tenantName = isLocal ? undefined : identity.tenant?.displayName;
   const [searchOpen, setSearchOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [asset, setAsset] = useState<WorkspaceAsset | null>(null);
@@ -286,6 +312,7 @@ export function Workspace() {
     : undefined;
   const pending = !!operation;
   function navigate(next: WorkspaceViewId) {
+    if (next === "fulfillment" && !isLocal) return;
     setView(next);
     window.location.hash = `/${next}`;
     setNavOpen(false);
@@ -343,12 +370,22 @@ export function Workspace() {
     return () => clearTimeout(id);
   }, [toast]);
   async function run(label: string, action: () => Promise<WorkspaceState>) {
+    if (!live.current || mountedGeneration !== sessionGeneration()) return;
+    if (!permissions.edit) {
+      setError("当前身份只有查看权限，不能修改工作区。");
+      return;
+    }
     if (operation) return;
     setOperation(label);
     setError("");
+    const deliverable = () =>
+      live.current && mountedGeneration === sessionGeneration();
     try {
       const next = await action();
-      queryClient.setQueryData(["workspace"], next);
+      if (!deliverable()) return undefined;
+      queryClient.setQueryData<WorkspaceState>(["workspace"], (current) =>
+        current && current.stateVersion > next.stateVersion ? current : next,
+      );
       const failedScan = next.scans.find(
         (scan) =>
           scan.status === "FAILED" &&
@@ -372,14 +409,19 @@ export function Workspace() {
       }
       return next;
     } catch (failure) {
+      if (!deliverable()) return undefined;
       setError(message(failure));
       void query.refetch();
       return undefined;
     } finally {
-      setOperation("");
+      if (deliverable()) setOperation("");
     }
   }
   async function addSource(draft: SourceDraft) {
+    if (!permissions.administer) {
+      setError("请企业管理员配置来源授权。");
+      return;
+    }
     if (replaceSource) {
       const selectedId = replaceSource.id;
       const updated = await run("正在更新来源快照", () =>
@@ -452,7 +494,7 @@ export function Workspace() {
   const currentFinding =
     storedWorkspace?.findings.find((item) => item.id === finding?.id) ??
     finding;
-  if (view === "fulfillment")
+  if (view === "fulfillment" && isLocal)
     return (
       <div className="sd-legacy">
         <button
@@ -479,6 +521,7 @@ export function Workspace() {
       className={`sd-workspace sd-desktop ${navCollapsed ? "sd-nav-collapsed" : ""}`}
       data-theme={theme === "linen" ? "mineral" : theme}
       data-view={view}
+      data-auth-mode={identity.mode}
     >
       <div className="sd-environment" aria-hidden="true">
         <img
@@ -559,13 +602,25 @@ export function Workspace() {
           onClick={() => navigate("settings")}
         >
           <span className="sd-org-avatar">
-            {workspace?.businessBrief?.enterpriseName.slice(0, 1) ?? "S"}
+            {(
+              tenantName ??
+              workspace?.businessBrief?.enterpriseName ??
+              "S"
+            ).slice(0, 1)}
           </span>
           <span>
             <strong>
-              {workspace?.businessBrief?.enterpriseName ?? "我的工作空间"}
+              {tenantName ??
+                workspace?.businessBrief?.enterpriseName ??
+                "我的工作空间"}
             </strong>
-            <small>{workspace ? "服务端文件存储" : "等待连接"}</small>
+            <small>
+              {workspace
+                ? isLocal
+                  ? "服务端文件存储"
+                  : "企业工作区"
+                : "等待连接"}
+            </small>
           </span>
           <ChevronDown size={14} />
         </button>
@@ -582,8 +637,9 @@ export function Workspace() {
         <nav aria-label="主导航">
           {NAV.filter(
             (item) =>
-              item.id !== "business" ||
-              (!!storedWorkspace && "businessBrief" in storedWorkspace),
+              (item.id !== "members" || permissions.manageMembers) &&
+              (item.id !== "business" ||
+                (!!storedWorkspace && "businessBrief" in storedWorkspace)),
           ).map((item) => (
             <button
               type="button"
@@ -611,18 +667,22 @@ export function Workspace() {
             </button>
           ))}
         </nav>
-        <div className="sd-nav-label sd-tool-label">专项工具</div>
-        <button
-          className="sd-specialty"
-          type="button"
-          aria-label="履约异常处理"
-          title="履约异常处理"
-          onClick={() => navigate("fulfillment")}
-        >
-          <FileCheck2 size={17} />
-          <span>履约异常处理</span>
-          <ArrowUpRight size={13} />
-        </button>
+        {isLocal && (
+          <>
+            <div className="sd-nav-label sd-tool-label">专项工具</div>
+            <button
+              className="sd-specialty"
+              type="button"
+              aria-label="履约异常处理"
+              title="履约异常处理"
+              onClick={() => navigate("fulfillment")}
+            >
+              <FileCheck2 size={17} />
+              <span>履约异常处理</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </>
+        )}
         <div className="sd-sidebar-bottom">
           <button
             type="button"
@@ -647,18 +707,14 @@ export function Workspace() {
           <div className="sd-local-identity">
             <span className="sd-profile-dot" />
             <span>
-              {localRolesEnabled() ? (
+              {permissions.localSwitch ? (
                 <select
                   className="sd-identity-select"
                   aria-label="本地演示身份"
                   value={localActor}
                   disabled={pending}
                   onChange={(event) => {
-                    const actor = event.target.value;
-                    setLocalActor(actor);
-                    localStorage.setItem("smartdata.localActor", actor);
-                    setToast("本地演示身份已切换");
-                    void query.refetch();
+                    void onLocalActorChange(event.target.value);
                   }}
                 >
                   {LOCAL_ACTORS.map(([id, label]) => (
@@ -668,11 +724,29 @@ export function Workspace() {
                   ))}
                 </select>
               ) : (
-                <strong>本地订单专员</strong>
+                <strong>{identity.displayName || identity.accountId}</strong>
               )}
-              <small>本地演示 · 仅本机使用</small>
+              <small>
+                {isLocal
+                  ? "本地演示 · 仅本机使用"
+                  : identity.roles.map((role) => ROLE_LABELS[role]).join(" · ")}
+              </small>
             </span>
-            <ShieldCheck size={15} />
+            {isLocal ? (
+              <ShieldCheck size={15} />
+            ) : (
+              <button
+                className="sd-icon"
+                type="button"
+                aria-label="退出企业账号"
+                title="退出企业账号"
+                onClick={() => {
+                  void onLogout();
+                }}
+              >
+                <LogOut size={15} />
+              </button>
+            )}
           </div>
         </div>
       </aside>
@@ -708,7 +782,9 @@ export function Workspace() {
               <PanelLeft size={17} />
             </button>
             <span>
-              {workspace?.businessBrief?.enterpriseName ?? "我的工作空间"}
+              {tenantName ??
+                workspace?.businessBrief?.enterpriseName ??
+                "我的工作空间"}
             </span>
             <ChevronRight size={12} />
             <strong>{TITLES[view]}</strong>
@@ -785,13 +861,16 @@ export function Workspace() {
               <span className="sd-overline">连接工作空间</span>
               <h1>无法连接工作区服务</h1>
               <p>
-                工作台暂时无法连接工作区服务。启动 SmartData
-                后，已保存的数据来源和协作进展会出现在这里。
+                {isLocal
+                  ? "工作台暂时无法连接工作区服务。启动 SmartData 后，已保存的数据来源和协作进展会出现在这里。"
+                  : "企业登录已确认，但工作区服务暂时未成功返回。请重新连接，仍不可用时联系部署负责人。"}
               </p>
-              <code>
-                .\gradlew.bat :runtime-api:bootRun
-                --args="--spring.profiles.active=local"
-              </code>
+              {isLocal && (
+                <code>
+                  .\gradlew.bat :runtime-api:bootRun
+                  --args="--spring.profiles.active=local"
+                </code>
+              )}
               <button
                 className="sd-button sd-primary"
                 type="button"
@@ -826,12 +905,17 @@ export function Workspace() {
                     <GraphView
                       artRef={environmentArtRef}
                       workspace={workspace}
-                      canEdit={localActor === "admin"}
+                      canEdit={permissions.administer}
+                      demoAllowed={isLocal}
                       pending={pending}
                       onAsset={setAsset}
                       navigate={navigate}
-                      onConnect={() => setSourceOpen(true)}
+                      onConnect={() => {
+                        if (permissions.administer) setSourceOpen(true);
+                        else setError("请企业管理员配置来源授权。");
+                      }}
                       onDemo={() => {
+                        if (!isLocal) return;
                         void run("正在载入并检查演示数据", () =>
                           workspaceClient.bootstrap(workspace.stateVersion),
                         );
@@ -844,11 +928,31 @@ export function Workspace() {
                     />
                   </Suspense>
                 )}
+                {view === "members" && (
+                  <Suspense fallback={<p role="status">正在读取企业成员…</p>}>
+                    <MembersPage
+                      identity={identity}
+                      onIdentityRefresh={onIdentityRefresh}
+                    />
+                  </Suspense>
+                )}
+                {view === "fulfillment" && !isLocal && (
+                  <Empty
+                    icon={ShieldCheck}
+                    title="企业工作区未启用此专项"
+                    body="当前只启用已验证的企业协作能力。"
+                  />
+                )}
                 {view === "overview" && (
                   <Overview
+                    demoAllowed={isLocal}
+                    canManage={permissions.administer}
                     workspace={workspace}
                     pending={pending}
-                    onConnect={() => setSourceOpen(true)}
+                    onConnect={() => {
+                      if (permissions.administer) setSourceOpen(true);
+                      else setError("请企业管理员配置来源授权。");
+                    }}
                     onDemo={() =>
                       run("正在载入并检查演示数据", () =>
                         workspaceClient.bootstrap(workspace.stateVersion),
@@ -861,10 +965,16 @@ export function Workspace() {
                 )}
                 {view === "sources" && (
                   <Sources
+                    canManage={permissions.administer}
+                    canScan={permissions.edit}
+                    demoAllowed={isLocal}
                     workspace={workspace}
                     pending={pending}
                     operation={operation}
-                    onConnect={() => setSourceOpen(true)}
+                    onConnect={() => {
+                      if (permissions.administer) setSourceOpen(true);
+                      else setError("请企业管理员配置来源授权。");
+                    }}
                     onScan={(id) =>
                       run("正在读取并检查数据", () =>
                         workspaceClient.scan(id, workspace.stateVersion),
@@ -872,18 +982,26 @@ export function Workspace() {
                     }
                     onAssets={() => navigate("assets")}
                     onReplace={(source) => {
+                      if (!permissions.administer) return;
                       setReplaceSource(source);
                       setSourceOpen(true);
                     }}
-                    onResetDemo={() => setResetOpen(true)}
-                    onDisconnect={setDisconnectSource}
+                    onResetDemo={() => {
+                      if (isLocal) setResetOpen(true);
+                    }}
+                    onDisconnect={(source) => {
+                      if (permissions.administer) setDisconnectSource(source);
+                    }}
                   />
                 )}
                 {view === "assets" && (
                   <Assets
                     workspace={workspace}
                     onSelect={setAsset}
-                    onConnect={() => setSourceOpen(true)}
+                    onConnect={() => {
+                      if (permissions.administer) setSourceOpen(true);
+                      else setError("请企业管理员配置来源授权。");
+                    }}
                   />
                 )}
                 {view === "business" &&
@@ -892,10 +1010,8 @@ export function Workspace() {
                       workspace={workspace}
                       pending={pending}
                       editor={businessEditor}
-                      canEdit={localActor !== "auditor"}
-                      canConfirm={
-                        localActor === "admin" || localActor === "sales-owner"
-                      }
+                      canEdit={permissions.edit}
+                      canConfirm={permissions.review}
                       onSave={(body) =>
                         run("正在保存业务约定", () =>
                           workspaceClient.saveBusinessBrief(body),
@@ -928,6 +1044,8 @@ export function Workspace() {
                 )}
                 {view === "team" && (
                   <Team
+                    canEdit={permissions.edit}
+                    modelAvailable={isLocal}
                     workspace={workspace}
                     evidenceFindings={storedWorkspace?.findings ?? []}
                     onFinding={setFinding}
@@ -958,6 +1076,8 @@ export function Workspace() {
                 )}
                 {view === "settings" && (
                   <Settings
+                    identity={identity}
+                    onLogout={onLogout}
                     theme={theme}
                     setTheme={setTheme}
                     workspace={workspace}
@@ -1012,6 +1132,7 @@ export function Workspace() {
       </AnimatePresence>
       {sourceOpen && workspace && (
         <SourceDialog
+          allowedKinds={isLocal ? undefined : ["JSON_SNAPSHOT"]}
           version={workspace.stateVersion}
           pending={pending}
           error={error}
@@ -1026,6 +1147,7 @@ export function Workspace() {
       )}
       {searchOpen && (
         <SearchDialog
+          canManageMembers={permissions.manageMembers}
           workspace={workspace}
           onClose={() => setSearchOpen(false)}
           onNavigate={navigate}
@@ -1065,10 +1187,9 @@ export function Workspace() {
           workspace={storedWorkspace!}
           pending={pending}
           error={error}
-          localActor={localActor}
+          identity={identity}
           onActorChange={(actor) => {
-            setLocalActor(actor);
-            localStorage.setItem("smartdata.localActor", actor);
+            void onLocalActorChange(actor);
           }}
           onClose={() => {
             setTask(null);
@@ -1102,11 +1223,12 @@ export function Workspace() {
           onClose={() => setGuideOpen(false)}
           onConnect={() => {
             setGuideOpen(false);
-            setSourceOpen(true);
+            if (permissions.administer) setSourceOpen(true);
+            else setError("请企业管理员配置来源授权。");
           }}
         />
       )}
-      {resetOpen && workspace && (
+      {resetOpen && workspace && isLocal && (
         <Dialog
           title="退出演示工作区？"
           subtitle="只清空合成演示数据和对应协作记录，之后即可接入你的业务来源。"
@@ -1264,6 +1386,8 @@ function State({ value }: { value: string }) {
 }
 
 function Overview({
+  demoAllowed,
+  canManage,
   workspace,
   pending,
   onConnect,
@@ -1272,6 +1396,8 @@ function Overview({
   onFinding,
   onExport,
 }: {
+  demoAllowed: boolean;
+  canManage: boolean;
   workspace: WorkspaceState;
   pending: boolean;
   onConnect: () => void;
@@ -1324,6 +1450,7 @@ function Overview({
           className="sd-button sd-primary"
           type="button"
           onClick={onConnect}
+          disabled={!canManage}
         >
           <Plus size={14} />
           连接数据
@@ -1341,19 +1468,22 @@ function Overview({
               className="sd-button sd-primary"
               type="button"
               onClick={onConnect}
+              disabled={!canManage}
             >
               <Plus size={14} />
               连接我的数据
             </button>
-            <button
-              className="sd-button sd-quiet"
-              type="button"
-              onClick={onDemo}
-              disabled={pending}
-            >
-              <FlaskConical size={14} />
-              先体验电商示例
-            </button>
+            {demoAllowed && (
+              <button
+                className="sd-button sd-quiet"
+                type="button"
+                onClick={onDemo}
+                disabled={pending}
+              >
+                <FlaskConical size={14} />
+                先体验电商示例
+              </button>
+            )}
           </div>
         </section>
       ) : (
@@ -1578,6 +1708,9 @@ function FindingRows({
 }
 
 function Sources({
+  canManage,
+  canScan,
+  demoAllowed,
   workspace,
   pending,
   operation,
@@ -1588,6 +1721,9 @@ function Sources({
   onResetDemo,
   onDisconnect,
 }: {
+  demoAllowed: boolean;
+  canManage: boolean;
+  canScan: boolean;
   workspace: WorkspaceState;
   pending: boolean;
   operation: string;
@@ -1605,7 +1741,8 @@ function Sources({
         title="数据连接"
         description="只读取你授权的来源。凭证保留在服务端，盘点过程和读取范围都可查看。"
       >
-        {workspace.sources.length > 0 &&
+        {demoAllowed &&
+          workspace.sources.length > 0 &&
           workspace.sources.every((source) => source.provenance === "DEMO") && (
             <button
               type="button"
@@ -1620,6 +1757,7 @@ function Sources({
           className="sd-button sd-primary"
           type="button"
           onClick={onConnect}
+          disabled={!canManage}
         >
           <Plus size={15} />
           添加数据来源
@@ -1670,7 +1808,7 @@ function Sources({
                   {sourceKindLabel[source.kind]}
                   {source.endpointLabel
                     ? ` · ${source.endpointLabel}`
-                    : " · 本地数据样本"}
+                    : " · 数据快照"}
                 </p>
                 <small>
                   {source.assetCount} 项资产 · 最近盘点尝试{" "}
@@ -1687,7 +1825,9 @@ function Sources({
                     type="button"
                     className="sd-text-button"
                     onClick={() => onReplace(source)}
-                    disabled={pending || source.status === "DISCONNECTED"}
+                    disabled={
+                      pending || !canManage || source.status === "DISCONNECTED"
+                    }
                   >
                     更新快照
                     <ArrowUpRight size={13} />
@@ -1696,7 +1836,9 @@ function Sources({
               <button
                 type="button"
                 className="sd-button sd-secondary"
-                disabled={pending || source.status === "DISCONNECTED"}
+                disabled={
+                  pending || !canScan || source.status === "DISCONNECTED"
+                }
                 onClick={() => onScan(source.id)}
               >
                 <RefreshCw size={14} className={pending ? "sd-spinning" : ""} />
@@ -1706,7 +1848,7 @@ function Sources({
                 <button
                   className="sd-icon"
                   type="button"
-                  disabled={pending}
+                  disabled={pending || !canManage}
                   aria-label={`断开 ${source.name}`}
                   title="断开来源"
                   onClick={() => onDisconnect(source)}
@@ -1990,6 +2132,8 @@ function Findings({
 }
 
 function Team({
+  modelAvailable,
+  canEdit,
   workspace,
   evidenceFindings,
   onFinding,
@@ -1998,6 +2142,8 @@ function Team({
   onTask,
   onAsk,
 }: {
+  modelAvailable: boolean;
+  canEdit: boolean;
   workspace: WorkspaceState;
   evidenceFindings: WorkspaceFinding[];
   onFinding: (finding: WorkspaceFinding) => void;
@@ -2034,7 +2180,7 @@ function Team({
           type="button"
           className="sd-button sd-primary"
           onClick={onProvision}
-          disabled={pending || !workspace.findings.length}
+          disabled={pending || !canEdit || !workspace.findings.length}
         >
           <UsersRound size={15} />
           {workspace.assistants.length ? "按最新发现更新分工" : "组建服务团队"}
@@ -2257,7 +2403,7 @@ function Team({
               onChange={(e) => setQuestion(e.target.value)}
               rows={2}
               maxLength={2000}
-              disabled={!assistant || pending}
+              disabled={!assistant || pending || !canEdit}
             />
             <footer>
               <span>
@@ -2270,7 +2416,7 @@ function Team({
               <button
                 type="submit"
                 aria-label="发送问题"
-                disabled={!assistant || !question.trim() || pending}
+                disabled={!assistant || !question.trim() || pending || !canEdit}
               >
                 {pending ? (
                   <LoaderCircle size={17} className="sd-spinning" />
@@ -2329,7 +2475,9 @@ function Team({
         <CircleHelp size={14} />
         {workspace.capabilities.assistantMethod === "SPRING_AI_EVIDENCE_V1"
           ? "已启用模型协助理解。你的提问与获准发现摘要会发送到已配置模型，请勿粘贴原始记录或密钥。请核对引用、未知项与版本记录，再决定下一步。模型答复不会直接修改业务系统。"
-          : "当前助手按固定检查规则整理证据与步骤，尚未调用语言模型。可选模型接入由管理员在服务端配置，启用后会在这里标明。"}
+          : modelAvailable
+            ? "当前助手按固定检查规则整理证据与步骤，尚未调用语言模型。可选模型接入由管理员在服务端配置，启用后会在这里标明。"
+            : "当前企业版按固定规则整理证据与步骤，由真实成员留下讨论、处理和复核记录。"}
       </p>
     </>
   );
@@ -2442,11 +2590,15 @@ function Tasks({
 }
 
 function Settings({
+  identity,
+  onLogout,
   theme,
   setTheme,
   workspace,
   onExport,
 }: {
+  identity: MeView;
+  onLogout: () => Promise<unknown>;
   theme: string;
   setTheme: (theme: string) => void;
   workspace: WorkspaceState;
@@ -2510,15 +2662,31 @@ function Settings({
         <div>
           <h2>身份连接</h2>
           <p>
-            {localRolesEnabled()
-              ? "当前工作区使用本机演示身份，可在左侧下方切换角色来验证交接。"
-              : "当前使用本机服务默认的订单专员身份；此构建未启用角色演练。"}
+            {identity.mode === "LOCAL_DEMO"
+              ? identity.capabilities.localRoleSwitch
+                ? "服务端明确启用了本机演示身份，可切换角色核对交接。"
+                : "当前本机身份由服务端确定，此部署未开放角色切换。"
+              : `${identity.tenant?.displayName} · ${identity.displayName || identity.accountId}`}
           </p>
         </div>
         <p className="sd-bottom-note">
           <ShieldCheck size={14} />
-          本地角色切换用于功能演练，不能证明不同人员完成审批。企业登录与真实双人复核仍需生产身份适配。
+          {identity.mode === "LOCAL_DEMO"
+            ? "本地角色切换用于功能演练，不能证明不同人员完成审批。"
+            : `当前角色：${identity.roles.map((role) => ROLE_LABELS[role]).join(" · ")}。权限来自企业当前成员记录。`}
         </p>
+        {identity.mode === "ENTERPRISE" && (
+          <button
+            type="button"
+            className="sd-button sd-secondary"
+            onClick={() => {
+              void onLogout();
+            }}
+          >
+            <LogOut size={14} />
+            退出企业账号
+          </button>
+        )}
       </section>
       <section className="sd-settings-section">
         <div>
@@ -2528,11 +2696,20 @@ function Settings({
         <dl className="sd-capability-list">
           <div>
             <dt>保存方式</dt>
-            <dd>服务端文件保存 · 工作区 v{workspace.stateVersion}</dd>
+            <dd>
+              {identity.mode === "LOCAL_DEMO"
+                ? "服务端文件保存"
+                : "企业数据库保存"}{" "}
+              · 工作区 v{workspace.stateVersion}
+            </dd>
           </div>
           <div>
             <dt>来源访问</dt>
-            <dd>只读连接；API 和数据库目标需在服务端允许名单中</dd>
+            <dd>
+              {identity.mode === "LOCAL_DEMO"
+                ? "只读连接；API 和数据库目标需在服务端允许名单中"
+                : "当前通过获准的 JSON 快照接入；实际范围以盘点记录为准"}
+            </dd>
           </div>
           <div>
             <dt>诊断方式</dt>
@@ -2735,7 +2912,7 @@ function TaskDialog({
   onClose,
   onTransition,
   onComment,
-  localActor,
+  identity,
   onActorChange,
 }: {
   task: WorkspaceTask;
@@ -2745,10 +2922,12 @@ function TaskDialog({
   onClose: () => void;
   onTransition: (status: string, note: string, refs: string[]) => void;
   onComment: (body: string) => Promise<WorkspaceState | undefined>;
-  localActor: string;
+  identity: MeView;
   onActorChange: (actor: string) => void;
 }) {
   const [note, setNote] = useState("");
+  const permissions = workspacePermissions(identity);
+  const localActor = identity.accountId ?? "";
   const comments = workspace.comments.filter((item) => item.taskId === task.id);
   const finding = workspace.findings.find((item) => item.id === task.findingId);
   const latestScan = workspace.scans
@@ -2844,7 +3023,7 @@ function TaskDialog({
         )}
         {task.status === "COMPLETED" && (
           <div className="sd-review-controls">
-            {localRolesEnabled() ? (
+            {permissions.localSwitch ? (
               <label>
                 本地复核身份
                 <select
@@ -2857,12 +3036,12 @@ function TaskDialog({
                 </select>
               </label>
             ) : (
-              <p>
-                当前控制台未启用演练身份切换，使用服务端默认的本地订单专员身份。
-              </p>
+              <p>当前复核账号：{identity.displayName || identity.accountId}</p>
             )}
             <p>
-              本地演示可切换角色验证交接。实际部署须由企业登录系统识别不同审核人。
+              {identity.mode === "LOCAL_DEMO"
+                ? "本地演示可切换角色验证交接，不能证明真实双人审核。"
+                : "任务处理人和复核人必须是不同的真实账号，切换角色不会改变账号身份。"}
             </p>
             <span>
               {latestScan && latestScan.id !== finding?.scanId
@@ -2871,11 +3050,21 @@ function TaskDialog({
             </span>
           </div>
         )}
+        {task.status === "COMPLETED" && task.ownerId === localActor && (
+          <p className="sd-member-note">
+            这项任务由你处理，请另一位有复核权限的真实同事核验；同一账号切换角色不能代替第二个人。
+          </p>
+        )}
+        {task.status === "ACCEPTED" && task.ownerId !== localActor && (
+          <p className="sd-member-note">
+            请由当前任务处理人提交结果，你可以在讨论中补充依据。
+          </p>
+        )}
         <div className="sd-task-actions">
           <button
             className="sd-button sd-secondary"
             type="button"
-            disabled={pending || !note.trim()}
+            disabled={pending || !permissions.edit || !note.trim()}
             onClick={async () => {
               const next = await onComment(note.trim());
               if (next) setNote("");
@@ -2888,7 +3077,7 @@ function TaskDialog({
             <button
               className="sd-button sd-primary"
               type="button"
-              disabled={pending || !note.trim()}
+              disabled={pending || !permissions.edit || !note.trim()}
               onClick={() =>
                 onTransition("ACCEPTED", note.trim(), task.evidenceRefs)
               }
@@ -2901,7 +3090,12 @@ function TaskDialog({
             <button
               className="sd-button sd-primary"
               type="button"
-              disabled={pending || !note.trim()}
+              disabled={
+                pending ||
+                !permissions.edit ||
+                task.ownerId !== localActor ||
+                !note.trim()
+              }
               onClick={() =>
                 onTransition("COMPLETED", note.trim(), task.evidenceRefs)
               }
@@ -2914,7 +3108,12 @@ function TaskDialog({
             <button
               className="sd-button sd-primary"
               type="button"
-              disabled={pending || !note.trim()}
+              disabled={
+                pending ||
+                !permissions.review ||
+                task.ownerId === localActor ||
+                !note.trim()
+              }
               onClick={() =>
                 onTransition("VERIFIED", note.trim(), verificationRefs)
               }
@@ -2927,7 +3126,7 @@ function TaskDialog({
             <button
               className="sd-button sd-secondary"
               type="button"
-              disabled={pending || !note.trim()}
+              disabled={pending || !permissions.review || !note.trim()}
               onClick={() =>
                 onTransition("REOPENED", note.trim(), task.evidenceRefs)
               }
@@ -2946,12 +3145,14 @@ function TaskDialog({
 }
 
 function SearchDialog({
+  canManageMembers,
   workspace,
   onClose,
   onNavigate,
   onAsset,
   onFinding,
 }: {
+  canManageMembers: boolean;
   workspace?: WorkspaceState;
   onClose: () => void;
   onNavigate: (view: WorkspaceViewId) => void;
@@ -2963,12 +3164,14 @@ function SearchDialog({
   const results = useMemo(
     () =>
       [
-        ...NAV.map((item) => ({
-          id: item.id,
-          title: item.label,
-          type: "页面",
-          open: () => onNavigate(item.id),
-        })),
+        ...NAV.filter((item) => item.id !== "members" || canManageMembers).map(
+          (item) => ({
+            id: item.id,
+            title: item.label,
+            type: "页面",
+            open: () => onNavigate(item.id),
+          }),
+        ),
         ...(workspace?.assets ?? []).map((asset) => ({
           id: asset.id,
           title: asset.name,
@@ -2986,7 +3189,7 @@ function SearchDialog({
           item.title.toLowerCase().includes(query.toLowerCase()),
         )
         .slice(0, 12),
-    [query, workspace, onNavigate, onAsset, onFinding],
+    [query, workspace, onNavigate, onAsset, onFinding, canManageMembers],
   );
   function open(index: number) {
     results[index]?.open();

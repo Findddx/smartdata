@@ -1,0 +1,624 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartdata.dev/contracts/enterprise-v1.schema.json",
+  "title": "SmartData enterprise identity and membership v1",
+  "$ref": "#/$defs/Me",
+  "$defs": {
+    "Roles": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "ORDER_SPECIALIST",
+          "WAREHOUSE_APPROVER",
+          "SALES_OWNER",
+          "AUDITOR",
+          "ADMIN"
+        ]
+      }
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "AccountId": {
+      "type": "string",
+      "pattern": "^acct_[0-9a-f]{64}$"
+    },
+    "Tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "Membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "stateVersion"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUSPENDED"
+          ]
+        },
+        "stateVersion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canUseWorkspace",
+        "canManageMembers",
+        "localRoleSwitch"
+      ],
+      "properties": {
+        "canUseWorkspace": {
+          "type": "boolean"
+        },
+        "canManageMembers": {
+          "type": "boolean"
+        },
+        "localRoleSwitch": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Csrf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headerName",
+        "token"
+      ],
+      "properties": {
+        "headerName": {
+          "enum": [
+            "X-CSRF-TOKEN",
+            "X-XSRF-TOKEN"
+          ]
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      }
+    },
+    "Invitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "accountId",
+        "roles",
+        "status",
+        "stateVersion",
+        "createdBy",
+        "expiresAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "accountId": {
+          "type": "string",
+          "pattern": "^acct_[0-9a-f]{64}$"
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "ORDER_SPECIALIST",
+              "WAREHOUSE_APPROVER",
+              "SALES_OWNER",
+              "AUDITOR",
+              "ADMIN"
+            ]
+          },
+          "minItems": 1
+        },
+        "status": {
+          "enum": [
+            "PENDING",
+            "ACCEPTED",
+            "REVOKED",
+            "EXPIRED"
+          ]
+        },
+        "stateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "createdBy": {
+          "type": "string",
+          "pattern": "^acct_[0-9a-f]{64}$"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountId",
+        "displayName",
+        "roles",
+        "status",
+        "stateVersion",
+        "updatedAt"
+      ],
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "pattern": "^acct_[0-9a-f]{64}$"
+        },
+        "displayName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "ORDER_SPECIALIST",
+              "WAREHOUSE_APPROVER",
+              "SALES_OWNER",
+              "AUDITOR",
+              "ADMIN"
+            ]
+          },
+          "minItems": 1
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUSPENDED"
+          ]
+        },
+        "stateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stateVersion",
+        "members",
+        "invitations"
+      ],
+      "properties": {
+        "stateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "members": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/Member"
+          }
+        },
+        "invitations": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/Invitation"
+          }
+        }
+      }
+    },
+    "InviteCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedStateVersion",
+        "accountId",
+        "roles"
+      ],
+      "properties": {
+        "expectedStateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accountId": {
+          "type": "string",
+          "pattern": "^acct_[0-9a-f]{64}$"
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "ORDER_SPECIALIST",
+              "WAREHOUSE_APPROVER",
+              "SALES_OWNER",
+              "AUDITOR",
+              "ADMIN"
+            ]
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "MemberRolesCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedStateVersion",
+        "expectedMembershipVersion",
+        "roles"
+      ],
+      "properties": {
+        "expectedStateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedMembershipVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "ORDER_SPECIALIST",
+              "WAREHOUSE_APPROVER",
+              "SALES_OWNER",
+              "AUDITOR",
+              "ADMIN"
+            ]
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "MemberStateCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedStateVersion",
+        "expectedMembershipVersion"
+      ],
+      "properties": {
+        "expectedStateVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedMembershipVersion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "VersionCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedStateVersion"
+      ],
+      "properties": {
+        "expectedStateVersion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Me": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "authenticated",
+        "accountId",
+        "displayName",
+        "tenant",
+        "membership",
+        "roles",
+        "capabilities",
+        "loginUrl",
+        "logoutUrl",
+        "csrf",
+        "invitations"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "LOCAL_DEMO",
+            "ENTERPRISE"
+          ]
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "accountId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "displayName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "tenant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Tenant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "membership": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Membership"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "ORDER_SPECIALIST",
+              "WAREHOUSE_APPROVER",
+              "SALES_OWNER",
+              "AUDITOR",
+              "ADMIN"
+            ]
+          }
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "loginUrl": {
+          "enum": [
+            "/oauth2/authorization/enterprise",
+            null
+          ]
+        },
+        "logoutUrl": {
+          "enum": [
+            "/logout",
+            null
+          ]
+        },
+        "csrf": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Csrf"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invitations": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/Invitation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "ENTERPRISE"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "accountId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^acct_[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "capabilities": {
+                "properties": {
+                  "localRoleSwitch": {
+                    "const": false
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": false
+              }
+            },
+            "required": [
+              "authenticated"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "roles": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "capabilities": {
+                "properties": {
+                  "canUseWorkspace": {
+                    "const": false
+                  },
+                  "canManageMembers": {
+                    "const": false
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "ENTERPRISE"
+              },
+              "capabilities": {
+                "properties": {
+                  "canUseWorkspace": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "canUseWorkspace"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "mode",
+              "capabilities"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "authenticated": {
+                "const": true
+              },
+              "accountId": {
+                "type": "string",
+                "pattern": "^acct_[0-9a-f]{64}$"
+              },
+              "tenant": {
+                "$ref": "#/$defs/Tenant"
+              },
+              "membership": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Membership"
+                  },
+                  {
+                    "properties": {
+                      "status": {
+                        "const": "ACTIVE"
+                      }
+                    },
+                    "type": "object"
+                  }
+                ]
+              },
+              "roles": {
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "capabilities": {
+                "properties": {
+                  "canManageMembers": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "canManageMembers"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "capabilities"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "roles": {
+                "contains": {
+                  "const": "ADMIN"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    }
+  }
+}

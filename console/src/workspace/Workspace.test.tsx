@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -7,6 +8,9 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { enterpriseMe, localMe } from "../test/identity-fixtures";
+import type { MeView } from "../auth/types";
+import { configureSession } from "../auth/transport";
 import { Workspace } from "./Workspace";
 import { workspaceClient } from "./client";
 import type { WorkspaceState } from "./types";
@@ -168,18 +172,25 @@ function fixture(): WorkspaceState {
     capabilities: {},
   };
 }
-function renderWorkspace() {
+function renderWorkspace(identity: MeView = localMe()) {
+  configureSession(identity);
   const query = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
       mutations: { retry: false },
     },
   });
-  return render(
+  const result = render(
     <QueryClientProvider client={query}>
-      <Workspace />
+      <Workspace
+        identity={identity}
+        onLocalActorChange={vi.fn()}
+        onIdentityRefresh={vi.fn()}
+        onLogout={vi.fn()}
+      />
     </QueryClientProvider>,
   );
+  return { ...result, queryClient: query };
 }
 beforeEach(() => {
   vi.unstubAllEnvs();
@@ -187,6 +198,7 @@ beforeEach(() => {
   sessionStorage.clear();
   window.location.hash = "/overview";
   vi.mocked(workspaceClient.get).mockReset().mockResolvedValue(fixture());
+  vi.mocked(workspaceClient.ask).mockReset();
   if (!HTMLDialogElement.prototype.showModal)
     HTMLDialogElement.prototype.showModal = function () {
       this.setAttribute("open", "");
@@ -234,16 +246,156 @@ describe("企业数据工作空间", () => {
     );
     expect(workspaceClient.saveBusinessBrief).not.toHaveBeenCalled();
   }, 15_000);
-  it("does not advertise a role switch when the built console will not send rehearsal identities", async () => {
+  it("uses the current server flag instead of browser build flags for role rehearsal", async () => {
     vi.stubEnv("DEV", false);
     vi.stubEnv("VITE_DEMO_AUTH", "false");
     localStorage.setItem("smartdata.localActor", "admin");
-    renderWorkspace();
+    renderWorkspace(
+      localMe({
+        accountId: "order-specialist",
+        displayName: "本地订单专员",
+        roles: ["ORDER_SPECIALIST"],
+        capabilities: {
+          canUseWorkspace: true,
+          canManageMembers: false,
+          localRoleSwitch: false,
+        },
+      }),
+    );
     await screen.findByRole("heading", { name: "工作清单" });
     expect(
       screen.queryByRole("combobox", { name: "本地演示身份" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("本地订单专员")).toBeInTheDocument();
+  });
+  it("uses enterprise roles even when the browser prefers local admin and hides the rehearsal tool", async () => {
+    localStorage.setItem("smartdata.localActor", "admin");
+    renderWorkspace(
+      enterpriseMe({
+        roles: ["AUDITOR"],
+        capabilities: {
+          canUseWorkspace: true,
+          canManageMembers: false,
+          localRoleSwitch: false,
+        },
+      }),
+    );
+    await screen.findByRole("heading", { name: "工作清单" });
+    expect(
+      screen.queryByRole("combobox", { name: "本地演示身份" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "履约异常处理" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "企业成员" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "连接数据" })).toBeDisabled();
+    expect(screen.getByText("陈负责人")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.change(screen.getByRole("combobox", { name: "搜索" }), {
+      target: { value: "企业成员" },
+    });
+    expect(
+      within(screen.getByRole("dialog", { name: "搜索工作空间" })).queryByText(
+        "企业成员",
+        { exact: true },
+      ),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "搜索工作空间" })).getByRole(
+        "button",
+        { name: "关闭对话框" },
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "数据连接" }));
+    expect(
+      await screen.findByRole("button", { name: "添加数据来源" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "重新盘点" })).toBeDisabled();
+  });
+  it("offers only the enabled enterprise snapshot connector instead of unsupported remote source setup", async () => {
+    renderWorkspace(enterpriseMe());
+    await screen.findByRole("heading", { name: "工作清单" });
+    fireEvent.click(screen.getByRole("button", { name: "连接数据" }));
+    const dialog = screen.getByRole("dialog", { name: "连接一个数据来源" });
+    expect(
+      within(dialog).getByRole("button", { name: /数据文件/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: /业务 API/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: /PostgreSQL/ }),
+    ).not.toBeInTheDocument();
+  });
+  it("does not offer self verification just because the same real account has a reviewer role", async () => {
+    const me = enterpriseMe();
+    const state = fixture();
+    state.tasks[0] = {
+      ...state.tasks[0]!,
+      status: "COMPLETED",
+      ownerId: me.accountId!,
+    };
+    vi.mocked(workspaceClient.get).mockResolvedValue(state);
+    renderWorkspace(me);
+    await screen.findByRole("heading", { name: "工作清单" });
+    fireEvent.click(screen.getByRole("button", { name: "协作任务" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /核实重复订单/ }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "核实重复订单" });
+    fireEvent.change(
+      within(dialog).getByPlaceholderText(/例如：已核对原始订单/),
+      { target: { value: "希望提交复核" } },
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "核验最新观测" }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(/同一账号切换角色不能代替第二个人/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("combobox", { name: "本地复核身份" }),
+    ).not.toBeInTheDocument();
+  });
+  it("does not put a late command result back into a new account's workspace cache", async () => {
+    let finish!: (state: WorkspaceState) => void;
+    vi.mocked(workspaceClient.ask).mockImplementation(
+      () =>
+        new Promise<WorkspaceState>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const view = renderWorkspace(enterpriseMe());
+    await screen.findByRole("heading", { name: "工作清单" });
+    fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
+    fireEvent.click(await screen.findByRole("tab", { name: /分析助手/ }));
+    fireEvent.change(await screen.findByLabelText("向服务助手提问"), {
+      target: { value: "请核对当前证据" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送问题" }));
+    await waitFor(() => expect(workspaceClient.ask).toHaveBeenCalled());
+    view.unmount();
+    configureSession(enterpriseMe({ accountId: `acct_${"2".repeat(64)}` }));
+    const newAccountView = { ...fixture(), stateVersion: 20 };
+    view.queryClient.setQueryData(["workspace"], newAccountView);
+    await act(async () => finish({ ...fixture(), stateVersion: 8 }));
+    expect(view.queryClient.getQueryData(["workspace"])).toEqual(
+      newAccountView,
+    );
+  });
+  it("does not send an old workspace command through a replacement session before unmount", async () => {
+    renderWorkspace(enterpriseMe());
+    await screen.findByRole("heading", { name: "工作清单" });
+    fireEvent.click(screen.getByRole("button", { name: "服务团队" }));
+    fireEvent.click(await screen.findByRole("tab", { name: /分析助手/ }));
+    fireEvent.change(await screen.findByLabelText("向服务助手提问"), {
+      target: { value: "来自旧页面的提问" },
+    });
+    configureSession(enterpriseMe({ accountId: `acct_${"2".repeat(64)}` }));
+    fireEvent.click(screen.getByRole("button", { name: "发送问题" }));
+    expect(workspaceClient.ask).not.toHaveBeenCalled();
   });
   it("keeps failed connections explicit without silently substituting demonstration data", async () => {
     vi.mocked(workspaceClient.get).mockRejectedValue(new Error("服务不可用"));

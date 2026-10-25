@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.Ordered
+import org.springframework.core.env.Environment
+import org.springframework.core.env.Profiles
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator
 import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.OAuth2TokenValidator
@@ -49,7 +51,7 @@ class LocalSecurityConfiguration {
 }
 
 @Configuration
-@Profile("!local")
+@Profile("!local & !enterprise")
 class ProductionSecurityConfiguration(
     @param:Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private val requiredIssuer: String,
@@ -105,10 +107,10 @@ internal class SmartDataJwtValidator(
 }
 
 @Configuration
-class RequestBoundaryConfiguration {
+class RequestBoundaryConfiguration(private val environment: Environment) {
     @Bean
     fun boundaryFilterRegistration(): FilterRegistrationBean<BoundaryFilter> =
-        FilterRegistrationBean(BoundaryFilter()).also {
+        FilterRegistrationBean(BoundaryFilter(denyDemoIdentityHeaders = !environment.acceptsProfiles(Profiles.of("local")))).also {
             it.order = Ordered.HIGHEST_PRECEDENCE
         }
 }
@@ -117,6 +119,7 @@ class PayloadTooLargeException : RuntimeException("请求正文超过 256 KiB �
 
 class BoundaryFilter(
     private val maxBodyBytes: Long = 256 * 1024,
+    private val denyDemoIdentityHeaders: Boolean = false,
 ) : OncePerRequestFilter() {
     private val forbiddenIdentityHeaders = listOf("X-Tenant-Id", "X-Roles", "X-Actor-Id")
 
@@ -125,8 +128,9 @@ class BoundaryFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        addHeaders(response)
-        if (forbiddenIdentityHeaders.any { request.getHeader(it) != null }) {
+        addHeaders(request, response)
+        if (forbiddenIdentityHeaders.any { request.getHeader(it) != null } ||
+            (denyDemoIdentityHeaders && request.getHeader("X-Demo-Actor") != null)) {
             writeProblem(response, 400, "不可信身份头", "租户和角色只能由服务端认证上下文解析")
             return
         }
@@ -141,10 +145,12 @@ class BoundaryFilter(
         }
     }
 
-    private fun addHeaders(response: HttpServletResponse) {
+    private fun addHeaders(request: HttpServletRequest, response: HttpServletResponse) {
         response.setHeader("X-Content-Type-Options", "nosniff")
         response.setHeader("X-Frame-Options", "DENY")
-        response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        val api = request.requestURI.startsWith("/api/") || request.requestURI.startsWith("/actuator/")
+        response.setHeader("Content-Security-Policy", if (api) "default-src 'none'; frame-ancestors 'none'" else
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
         response.setHeader("Referrer-Policy", "no-referrer")
         response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         response.setHeader("Cache-Control", "no-store")
