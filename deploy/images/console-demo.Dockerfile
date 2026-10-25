@@ -1,6 +1,6 @@
 # Local demo image only; production deployments should serve the built assets
 # from an audited edge/static server with their final CSP.
-FROM node:24.8.0-alpine3.22
+FROM node:26.3.0-alpine3.22
 WORKDIR /app
 ARG VITE_DEMO_AUTH=true
 ENV VITE_DEMO_AUTH=${VITE_DEMO_AUTH}
