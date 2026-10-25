@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.3.21"
 spring-boot = "4.1.1"
-spring-ai = "2.0.1"
+spring-ai = "2.0.2"
 temporal = "1.38.0"
 jackson = "3.2.4"
 jackson2 = "2.21.8"
