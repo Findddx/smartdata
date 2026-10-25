@@ -23,6 +23,25 @@ jobs:
         uses: ./.github/actions/setup-pinned-java
       - name: Test JVM modules and generate aggregate CycloneDX SBOM
         run: ./gradlew --no-daemon --no-parallel --max-workers=2 --stacktrace test cyclonedxBom --write-locks
+      - name: Require executed JVM cases without skips
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          reports = sorted(Path(".").glob("*/build/test-results/test/TEST-*.xml"))
+          if not reports:
+              raise SystemExit("JVM JUnit reports are required")
+          totals = {key: 0 for key in ("tests", "failures", "errors", "skipped")}
+          for path in reports:
+              suite = ElementTree.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(suite.get(key, "0"))
+          if totals["tests"] == 0 or any(totals[key] for key in ("failures", "errors", "skipped")):
+              raise SystemExit(f"JVM checks must execute without failures or skips: {totals}")
+          print("JVM_JUNIT_TOTALS=" + json.dumps(totals, sort_keys=True))
+          PY
       - name: Reject stale dependency locks
         shell: bash
         run: |
@@ -97,6 +116,16 @@ jobs:
           path: |
             build/reports/sbom/smartdata.cdx.json
             build/reports/sbom/smartdata.cdx.xml
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve JVM JUnit and HTML evidence
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: ${{ always() }}
+        with:
+          name: smartdata-jvm-tests
+          path: |
+            */build/test-results/test/TEST-*.xml
+            */build/reports/tests/test
           if-no-files-found: error
           retention-days: 30
 
