@@ -24,11 +24,14 @@
 通用工作区；本阶段正补齐这些断点。[设计与验收约定](docs/architecture/0009-enterprise-workspace-and-membership.md)
 已记录，完成情况以之后的实际登录、数据库及浏览器证据为准。
 
-企业登录、当前成员权限和共享工作区代码已经接通，本机150项普通后端测试通过；
-真实数据库与完整登录故事仍在统一验收。具体进展见[企业协作阶段汇报](docs/reports/2026-10-25-enterprise-workspace-delivery.md)。
+企业登录、当前成员权限和共享工作区的实现已写入，本机与云端150项普通后端测试、
+67项界面测试通过。首次真实数据库运行36项，有8项失败：7项来自字段名检查误拒含数字
+的合法名称，另1项是登录未建立有效身份，正在依据协议阶段记录定位。具体进展见
+[企业协作阶段汇报](docs/reports/2026-10-25-enterprise-workspace-delivery.md)。
+字段检查修复后，本机157项普通测试已通过；下一次云端仍须重新验证整个数据库与登录链路。
 不能把“已实现、已编译”直接写成“已在真实企业使用”。
 
-本轮已重做桌面工作区、原创标识和数据血缘主画布，并建立四份长期协作文件。用户
+上一阶段已重做桌面工作区、原创标识和数据血缘主画布，并建立四份长期协作文件。用户
 否定过旧界面的审美，随后进一步明确了岛屿布局、真实折射与艺术配色；这版依此实现。
 程序与浏览器检查通过仍不能代替用户接受设计，参考仓库在验收前保留，之后才固化技能。
 
@@ -37,12 +40,14 @@
 石墨、水碧和朱砂四套主题延续原创贴图。42项界面测试、真实触屏回归和三个浏览器
 内核的折射小样检查已通过，具体范围见阶段汇报。企业部署和真实业务价值另验收。
 
-当前进展统一看[本轮阶段汇报](docs/reports/2026-10-25-lineage-workbench-delivery.md)。
+岛屿与血缘的已交付结果看[对应阶段汇报](docs/reports/2026-10-25-lineage-workbench-delivery.md)；
+正在推进的企业协作看[最新阶段汇报](docs/reports/2026-10-25-enterprise-workspace-delivery.md)。
 上一轮的[业务约定与可靠保存交付](docs/reports/2026-10-25-business-postgresql-delivery.md)
 仍是已发布的历史证据，不能把两轮状态混写。
 
 | 工作线 | 已有产物与入口 | 现在到哪一步 |
 |---|---|---|
+| 企业登录与共享工作区 | [设计](docs/architecture/0009-enterprise-workspace-and-membership.md)、[配置与操作](docs/operations/enterprise-workspace.md)、[当前验收](docs/reports/2026-10-25-enterprise-workspace-delivery.md) | 普通测试已过；首次真实数据库36项中8项失败，正在修复与定位，尚未合入稳定主线 |
 | 桌面工作区与原创视觉 | [图谱工作面](console/src/workspace/GraphView.tsx)、[原创标识与图标](console/src/brand)、[新布局设计](docs/design/island-canvas-and-liquid-materials.md) | 真实后端、桌面/触屏/键盘与独立空态验收通过；设计待用户判断 |
 | 分层与血缘服务 | [血缘模块](runtime-api/src/main/kotlin/io/smartdata/foundation/runtime/workspace/lineage)、[协议说明](contracts)、[节点验收](docs/verification/2026-10-25-lineage-release.md) | 节点上131项后端测试通过；真实接口及界面继续验收，不能直接等同生产可用 |
 | 节点数据实验 | [复现方法](experiments/lineage/README.md)、[固定证据](docs/verification/lineage-synthetic-20261025/manifest-index.json)、[入门讲解](docs/learning/data-layers-and-lineage.md) | 已实际复算一致；保持合成数据和真实业务结论的边界 |

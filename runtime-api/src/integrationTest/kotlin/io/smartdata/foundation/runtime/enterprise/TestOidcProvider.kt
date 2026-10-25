@@ -27,6 +27,7 @@ import java.util.Base64
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,7 +54,9 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
     val authorizations = AtomicInteger()
     val tokenExchanges = AtomicInteger()
     val pkceChecks = AtomicInteger()
+    val userInfoRequests = AtomicInteger()
     val nextTokenFault = AtomicReference<String?>()
+    val rejectedRequests = CopyOnWriteArrayList<String>()
     @Volatile var registeredRedirect: String? = null
     private data class Grant(val subject: String, val redirect: String, val challenge: String, val nonce: String, val expiresAt: Instant)
     private val codes = ConcurrentHashMap<String, Grant>()
@@ -82,7 +85,10 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
         }
         issuer = "https://localhost:${server.address.port}"
         server.createContext("/") { exchange ->
-            try { dispatch(exchange) } catch (_: Exception) { respond(exchange, 400, mapOf("error" to "invalid_request")) }
+            try { dispatch(exchange) } catch (failure: Exception) {
+                rejectedRequests += "${exchange.requestURI.path}:${(failure as? FixtureProtocolException)?.code ?: "INVALID_REQUEST"}"
+                respond(exchange, 400, mapOf("error" to "invalid_request"))
+            }
             finally { exchange.close() }
         }
         server.start()
@@ -107,6 +113,7 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
             "/authorize" -> authorize(exchange)
             "/token" -> token(exchange)
             "/userinfo" -> {
+                userInfoRequests.incrementAndGet()
                 val grant = accessTokens[exchange.requestHeaders.getFirst("Authorization")?.removePrefix("Bearer ")]
                 require(grant != null && grant.expiresAt.isAfter(Instant.now()))
                 respond(exchange, 200, mapOf("sub" to grant.subject, "name" to "Integration ${grant.subject}"))
@@ -120,12 +127,12 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
         val parameters = parameters(exchange.requestURI.rawQuery.orEmpty())
         val subject = exchange.requestHeaders.getFirst("Cookie").orEmpty().split(';').map(String::trim)
             .firstOrNull { it.startsWith("FIXTURE_ACCOUNT=") }?.substringAfter('=')
-        require(subject in setOf("owner", "worker", "outsider"))
-        require(parameters["client_id"] == clientId && parameters["response_type"] == "code")
+        verify(subject in setOf("owner", "worker", "outsider"), "LOGIN_COOKIE")
+        verify(parameters["client_id"] == clientId && parameters["response_type"] == "code", "CLIENT_REQUEST")
         val redirect = requireNotNull(parameters["redirect_uri"])
-        require(redirect == registeredRedirect && URI(redirect).scheme == "https")
+        verify(redirect == registeredRedirect && URI(redirect).scheme == "https", "REDIRECT_URI")
         require(parameters["scope"].orEmpty().split(' ').contains("openid"))
-        require(parameters["code_challenge_method"] == "S256")
+        verify(parameters["code_challenge_method"] == "S256", "PKCE_METHOD")
         val challenge = requireNotNull(parameters["code_challenge"]).also { require(it.matches(Regex("[A-Za-z0-9_-]{43}"))) }
         val nonce = requireNotNull(parameters["nonce"]).also { require(it.isNotBlank()) }
         val state = requireNotNull(parameters["state"]).also { require(it.isNotBlank()) }
@@ -140,15 +147,15 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
         require(exchange.requestMethod == "POST")
         val basic = exchange.requestHeaders.getFirst("Authorization").orEmpty().removePrefix("Basic ")
         val credentials = Base64.getDecoder().decode(basic).toString(UTF_8).split(':', limit = 2).map { URLDecoder.decode(it, UTF_8) }
-        require(credentials.size == 2 && credentials[0] == clientId && MessageDigest.isEqual(credentials[1].toByteArray(), clientSecret.toByteArray()))
+        verify(credentials.size == 2 && credentials[0] == clientId && MessageDigest.isEqual(credentials[1].toByteArray(), clientSecret.toByteArray()), "CLIENT_AUTHENTICATION")
         val parameters = parameters(exchange.requestBody.readNBytes(8192).toString(UTF_8))
         require(parameters["grant_type"] == "authorization_code")
         val grant = requireNotNull(codes.remove(parameters["code"]))
-        require(grant.expiresAt.isAfter(Instant.now()) && parameters["redirect_uri"] == grant.redirect)
+        verify(grant.expiresAt.isAfter(Instant.now()) && parameters["redirect_uri"] == grant.redirect, "CODE_EXPIRY_OR_REDIRECT")
         val verifier = requireNotNull(parameters["code_verifier"])
         require(verifier.matches(Regex("[A-Za-z0-9._~-]{43,128}")))
         val challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(UTF_8)))
-        require(MessageDigest.isEqual(challenge.toByteArray(UTF_8), grant.challenge.toByteArray(UTF_8)))
+        verify(MessageDigest.isEqual(challenge.toByteArray(UTF_8), grant.challenge.toByteArray(UTF_8)), "PKCE_PROOF")
         pkceChecks.incrementAndGet()
         val now = Instant.now()
         val fault = nextTokenFault.getAndSet(null)
@@ -188,6 +195,8 @@ internal class TestOidcProvider(private val directory: Path) : AutoCloseable {
     }
 
     private fun encode(text: String) = URLEncoder.encode(text, UTF_8)
+    private class FixtureProtocolException(val code: String) : RuntimeException()
+    private fun verify(condition: Boolean, code: String) { if (!condition) throw FixtureProtocolException(code) }
 
     private fun respond(exchange: HttpExchange, status: Int, body: Any) {
         val bytes = json.writeValueAsBytes(body)

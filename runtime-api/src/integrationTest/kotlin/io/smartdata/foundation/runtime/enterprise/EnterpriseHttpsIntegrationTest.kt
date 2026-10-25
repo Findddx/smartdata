@@ -167,7 +167,7 @@ class EnterpriseHttpsIntegrationTest {
                         for (fault in listOf("NONCE", "ISSUER", "AUDIENCE", "EXPIRED", "SIGNATURE")) {
                             provider.nextTokenFault.set(fault)
                             val rejected = Browser(provider)
-                            rejected.login(base, "outsider")
+                            rejected.login(base, "outsider", expectAuthenticated = false)
                             assertFalse(rejected.get("$base/api/v1/me")["authenticated"].asBoolean(), "$fault token must not authenticate")
                         }
                         assertEquals(provider.tokenExchanges.get(), provider.pkceChecks.get())
@@ -227,13 +227,21 @@ class EnterpriseHttpsIntegrationTest {
             assertEquals(200, response.statusCode(), "POST $path: ${response.body().take(400)}")
             return json.readTree(response.body())
         }
-        fun login(base: String, subject: String) {
+        fun login(base: String, subject: String, expectAuthenticated: Boolean = true) {
             val fixtureLogin = HttpRequest.newBuilder(URI("${idp.issuer}/fixture/login")).POST(HttpRequest.BodyPublishers.ofString("subject=$subject")).build()
             assertEquals(200, client.send(fixtureLogin, HttpResponse.BodyHandlers.discarding()).statusCode())
             var current = "$base/oauth2/authorization/enterprise"
+            val hops = mutableListOf<String>()
             repeat(6) {
                 val response = request(current)
-                if (response.statusCode() !in 300..399) return
+                hops += "${URI(current).path}:${response.statusCode()}:${response.headers().firstValue("X-Audit-Id").orElse("none")}"
+                if (response.statusCode() !in 300..399) {
+                    if (expectAuthenticated) {
+                        val me = get("$base/api/v1/me")
+                        assertTrue(me["authenticated"].asBoolean(), "Login for $subject did not complete; hops=$hops; provider authorizations=${idp.authorizations.get()}, exchanges=${idp.tokenExchanges.get()}, PKCE=${idp.pkceChecks.get()}, userInfo=${idp.userInfoRequests.get()}, rejected=${idp.rejectedRequests}")
+                    }
+                    return
+                }
                 current = URI(current).resolve(response.headers().firstValue("Location").orElseThrow()).toString()
                 require(URI(current).host == "localhost") { "Test login redirected outside its owned fixtures" }
             }

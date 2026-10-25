@@ -103,8 +103,8 @@ class EnterpriseSecurityConfiguration {
         val users=OAuth2UserService<OidcUserRequest,OidcUser> { request ->
             val user=delegate.loadUser(request)
             val identity=EnterpriseAccounts.identity(user.idToken.issuer.toString(),user.subject,user.getClaimAsString("name"))
-            try { directory.recordLogin(identity) } catch(_:RuntimeException) {
-                throw OAuth2AuthenticationException(OAuth2Error("enterprise_identity_unavailable","企业尚未开通或身份目录暂不可用",null))
+            try { directory.recordLogin(identity) } catch(failure:RuntimeException) {
+                throw enterpriseIdentityFailure(failure)
             }
             val claims=LinkedHashMap(user.userInfo?.claims.orEmpty())
             claims["sub"]=user.subject
@@ -122,6 +122,7 @@ class EnterpriseSecurityConfiguration {
                 .requestMatchers("/","/index.html","/assets/**","/art/**","/brand/**","/third-party-licenses/**","/favicon.ico").permitAll()
                 .anyRequest().authenticated()
         }
+        val loginFailures=EnterpriseLoginFailureDiagnostics()
         http.oauth2Login { login ->
             login.authorizedClientRepository(IdentityOnlyAuthorizedClientRepository())
             login.authorizationEndpoint { it.authorizationRequestResolver(resolver) }
@@ -130,7 +131,7 @@ class EnterpriseSecurityConfiguration {
                 request.getSession(true).setAttribute(AUTHENTICATED_AT,clock.instant().toString())
                 response.sendRedirect(properties.externalBaseUrl.trimEnd('/')+"/")
             }
-            login.failureHandler { _,response,_ -> problem(response,401,"企业登录未完成，请重新发起登录") }
+            login.failureHandler { _,response,failure -> loginFailures.reject(response,failure) }
         }
         // Local logout is independent of provider availability. It removes the
         // shared session; no claim is made about IdP-wide token revocation.

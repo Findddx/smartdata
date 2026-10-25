@@ -19,8 +19,13 @@ internal object WorkspaceSql {
     fun encode(value: Any): String = mapper.writeValueAsString(value)
     fun <T> decode(text: String, type: Class<T>): T = mapper.readValue(text, type)
 
+    internal fun validateIdentifiers(table: String, columns: Set<String>) {
+        require(table in PostgresWorkspaceStore.OWNED_TABLES && columns.isNotEmpty() &&
+            columns.all { it.matches(Regex("[a-z_][a-z0-9_]*")) }) { "工作区SQL只接受登记的表与合法内部字段名" }
+    }
+
     fun save(db: DSLContext, table: String, fields: Map<String, Any?>, keys: List<String>, mutable: Set<String> = emptySet()) {
-        require(table.startsWith("workspace_") && fields.keys.all { it.matches(Regex("[a-z_]+")) })
+        validateIdentifiers(table, fields.keys)
         val where = keys.joinToString(" and ") { "$it=?" }
         val keyValues = keys.map { fields[it] }.toTypedArray()
         val old = db.fetchOne("select * from $table where $where", *keyValues)
