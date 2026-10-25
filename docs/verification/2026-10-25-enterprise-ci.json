@@ -1,0 +1,135 @@
+{
+  "recordVersion": 1,
+  "date": "2026-10-25",
+  "implementationCommit": "13ef5af10270f0c557a214e6a7e0f940a45e90e5",
+  "run": {
+    "id": 40227911134,
+    "url": "https://github.com/Findddx/smartdata/actions/runs/40227911134",
+    "conclusion": "success",
+    "applicableJobsSucceeded": 8,
+    "dependencyReview": "Pull-request-only job; skipped for this push, not counted as a passed job"
+  },
+  "unit": {
+    "tests": 162,
+    "suites": 26,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "source": "Downloaded JUnit XML"
+  },
+  "integration": {
+    "tests": 36,
+    "suites": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "source": "Downloaded JUnit XML",
+    "httpsOidcPkceSharedSessionRestartMemberRevocation": "PASS"
+  },
+  "console": {
+    "tests": 67,
+    "files": 12,
+    "typeCheck": "PASS",
+    "productionBuild": "PASS",
+    "source": "Completed console job logs; enterprise browser UI not covered"
+  },
+  "contracts": {
+    "workspaceDefinitions": 41,
+    "workspaceUnsafeInputsRejected": 30,
+    "lineageDefinitions": 14,
+    "lineageUnsafeInputsRejected": 26,
+    "enterpriseDefinitions": 15,
+    "enterpriseUnsafeInputsRejected": 27,
+    "openApiDocuments": 4,
+    "result": "PASS"
+  },
+  "sbom": {
+    "format": "CycloneDX",
+    "version": "1.6",
+    "components": 255,
+    "bomJsonSha256": "12944b8775362fe7b2e3bb1fe96f2264d104927768a1ce37409a5656aa24b318",
+    "checkedFamilies": {
+      "Jackson 3": "3.2.4",
+      "Jackson 2 codecs": "2.21.8",
+      "Tomcat": "11.0.27",
+      "Spring Security": "7.1.1",
+      "Spring Session": "4.1.1"
+    }
+  },
+  "security": {
+    "historyCommitsScanned": 24,
+    "gitleaksFindings": 0,
+    "sourceScan": {
+      "severity": [
+        "HIGH",
+        "CRITICAL"
+      ],
+      "includeUnfixed": true,
+      "includeDevelopmentDependencies": true,
+      "scanners": [
+        "vuln",
+        "secret",
+        "misconfig"
+      ],
+      "gate": "PASS",
+      "exceptionPolicy": "Only the existing exact local-demo flag exceptions; no new waivers"
+    },
+    "postgresImage": {
+      "testedImageId": "sha256:a078341942500e848da7e99f288e2ca85ef379f57786d444b1c67c55627be393",
+      "scannedImageId": "sha256:a078341942500e848da7e99f288e2ca85ef379f57786d444b1c67c55627be393",
+      "operatingSystem": "Alpine Linux 3.24.3",
+      "includeUnfixed": true,
+      "highCriticalFindings": 0
+    }
+  },
+  "artifacts": [
+    {
+      "name": "smartdata-connector-v1-descriptor",
+      "id": 12612600375,
+      "zipSha256": "3052c9f79ea851c0b6243a0c644ff3f12697eb9ce6212d959cef546343518650",
+      "bytes": 2132,
+      "downloadedAndDigestMatched": true
+    },
+    {
+      "name": "smartdata-gitleaks-redacted",
+      "id": 12612206321,
+      "zipSha256": "78656bd52c94ce2ce55434d275acee212dea69161f890957c6cc2ecee1066be0",
+      "bytes": 145,
+      "downloadedAndDigestMatched": true
+    },
+    {
+      "name": "smartdata-cyclonedx-sbom",
+      "id": 12611971225,
+      "zipSha256": "b0855968fe0dd82b117b55c44cf07ae6d860fc62bfd6445dccc9fd477b22fbf7",
+      "bytes": 216339,
+      "downloadedAndDigestMatched": true
+    },
+    {
+      "name": "smartdata-postgresql18-integration",
+      "id": 12611927476,
+      "zipSha256": "5d46108e9768641ddfb5ed32c4cc41af4a4cf71bc4cbef53adc243b83ab89433",
+      "bytes": 45605,
+      "downloadedAndDigestMatched": true
+    },
+    {
+      "name": "smartdata-postgresql-image-scan",
+      "id": 12611882622,
+      "zipSha256": "85202b6c1276bd46de8179df5e0a5382241c9fb2ab5ea6811184bee0a0051d9c",
+      "bytes": 16812,
+      "downloadedAndDigestMatched": true
+    },
+    {
+      "name": "smartdata-jvm-tests",
+      "id": 12611811600,
+      "zipSha256": "b03fed8da1a51036c6063a71fecd88ab90d84c891f42faa40a51ecf610c44e94",
+      "bytes": 118734,
+      "downloadedAndDigestMatched": true
+    }
+  ],
+  "limitations": [
+    "Synthetic fixtures and an independent HTTPS identity-protocol fixture; no customer IdP or real employee pilot.",
+    "Enterprise React login has component coverage but is not yet verified by two real browser sessions.",
+    "This record does not prove production capacity, backup recovery, rolling upgrades, all deployment image security, or business ROI.",
+    "CI artifacts expire under repository retention rules; hashes and source remain, and CI can regenerate the checks."
+  ]
+}
