@@ -1,0 +1,33 @@
+name: Set up checksum-pinned Temurin
+description: Install the exact Temurin 25.0.4.1+1 Linux x64 archive while retaining Gradle caching.
+runs:
+  using: composite
+  steps:
+    - name: Download and verify the exact JDK archive
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "$RUNNER_OS" = Linux
+        test "$RUNNER_ARCH" = X64
+        archive="$RUNNER_TEMP/smartdata-temurin-25.0.4.1+1.tar.gz"
+        curl --fail --location --silent --show-error --retry 3 --proto '=https' --tlsv1.2 \
+          --output "$archive" \
+          'https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4.1_1.tar.gz'
+        echo "dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e  $archive" | sha256sum --check --strict
+    - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      with:
+        distribution: jdkfile
+        # Adoptium's own semver label for 25.0.4.1+1-LTS. The four-part Java
+        # runtime version is not accepted directly by setup-java's SemVer parser.
+        java-version: "25.0.4+101.0.LTS"
+        jdk-file: ${{ runner.temp }}/smartdata-temurin-25.0.4.1+1.tar.gz
+        architecture: x64
+        force-download: true
+        cache-jdk: false
+        cache: gradle
+    - name: Confirm the installed Java runtime version
+      shell: bash
+      run: |
+        set -euo pipefail
+        grep --fixed-strings --line-regexp 'JAVA_RUNTIME_VERSION="25.0.4.1+1-LTS"' "$JAVA_HOME/release"
+        "$JAVA_HOME/bin/java" -version

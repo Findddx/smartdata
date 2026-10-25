@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/smartdata-foundation/smartdata/mcp-bridge/internal/bridge"
+	"github.com/Findddx/smartdata/mcp-bridge/internal/bridge"
 )
 
 var version = "dev"

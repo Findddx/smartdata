@@ -1,8 +1,8 @@
-module github.com/smartdata-foundation/smartdata/mcp-bridge
+module github.com/Findddx/smartdata/mcp-bridge
 
-go 1.27.0
+go 1.27.3
 
-toolchain go1.27.1
+toolchain go1.27.3
 
 require github.com/modelcontextprotocol/go-sdk v1.7.0
 

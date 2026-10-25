@@ -1,0 +1,9 @@
+# Reviewed synthetic findings from the first public commit, scanned with Gitleaks 8.30.1.
+# Exact commit/file/rule/line fingerprints only: no directory, rule, or future-commit exemption.
+# The next three values are the public 0123456789abcdef0123456789abcdef fixture
+# used only by CI to parse Compose configuration; no database or service starts with them.
+5ca3077dd13c871d68b5e5a1a35999b0a02c75cc:.github/workflows/ci.yml:generic-api-key:256
+5ca3077dd13c871d68b5e5a1a35999b0a02c75cc:.github/workflows/ci.yml:generic-api-key:257
+5ca3077dd13c871d68b5e5a1a35999b0a02c75cc:.github/workflows/ci.yml:generic-api-key:258
+# "recommend-happy-0001" identifies an idempotent HTTP test command; it grants no access.
+5ca3077dd13c871d68b5e5a1a35999b0a02c75cc:runtime-api/src/test/kotlin/io/smartdata/foundation/runtime/api/FoundationControllerTest.kt:generic-api-key:98
