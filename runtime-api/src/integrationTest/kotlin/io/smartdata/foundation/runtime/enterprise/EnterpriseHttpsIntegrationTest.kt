@@ -234,7 +234,16 @@ class EnterpriseHttpsIntegrationTest {
             val hops = mutableListOf<String>()
             repeat(6) {
                 val response = request(current)
-                hops += "${URI(current).path}:${response.statusCode()}:${response.headers().firstValue("X-Audit-Id").orElse("none")}"
+                val stage = if (response.statusCode() == 401) {
+                    val detail = runCatching { json.readTree(response.body())["detail"].asString() }.getOrNull()
+                    when (detail) {
+                        "企业会话已到期，请重新登录" -> "SESSION_EXPIRED"
+                        "企业会话无效，请重新登录" -> "SESSION_INVALID"
+                        "请先登录企业账号" -> "AUTH_REQUIRED"
+                        else -> "OTHER"
+                    }
+                } else "none"
+                hops += "${URI(current).path}:${response.statusCode()}:$stage:${response.headers().firstValue("X-Audit-Id").orElse("none")}"
                 if (response.statusCode() !in 300..399) {
                     if (expectAuthenticated) {
                         val me = get("$base/api/v1/me")

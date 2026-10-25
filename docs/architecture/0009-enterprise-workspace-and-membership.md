@@ -1,6 +1,6 @@
 # 0009：把单机工作台接成真实企业协作
 
-日期：2026-10-25。状态：实施中，尚未验收。
+日期：2026-10-25。状态：已采用；节点上的核心协议与数据库验收通过，最终发布与范围见阶段汇报。
 
 ## 要解决的问题
 
@@ -59,6 +59,11 @@
 - [锁定版本的 XOR 遮罩生成与还原](https://github.com/spring-projects/spring-security/blob/7.1.1/web/src/main/java/org/springframework/security/web/csrf/XorCsrfTokenRequestAttributeHandler.java#L51)。
 
 ## 一手依据
+
+登录信息中的网址按OIDC标准保存为文本。框架运行时会把 `iss` 转成 `java.net.URL`，
+直接带类型保存会被安全反序列化拒绝。私有会话编码器仅把URL写成文本，保留原有
+类型校验；不会把URL、Runtime或File等类型加入恢复白名单。完整对象往返及恶意
+类型拒绝在节点实际通过，且专门检查转换不调用URL网络方法。
 
 - [OAuth 安全最佳实践 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html)：授权码、PKCE、重定向与令牌保护。
 - [Spring Security 7.1.1 登录实现](https://github.com/spring-projects/spring-security/tree/7.1.1/oauth2/oauth2-client)：复用标准协议实现，不自行编写登录协议。

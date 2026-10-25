@@ -1,0 +1,66 @@
+{
+  "recordVersion": 1,
+  "date": "2026-10-25",
+  "scope": "Engineering regression on an authorized isolated Linux node, using public synthetic fixtures; not a real enterprise pilot or capacity benchmark",
+  "source": {
+    "baseCommit": "26e8eec295489bcd57f20b728c8f3245ec5c0a2b",
+    "initialPublicSourceArchiveSha256": "6fd58e8ae789a009232aa663c8f2b56e1609ab5769968c03821a5aad9b769961",
+    "archiveIsFinalCommit": false,
+    "patchDescription": "The initial working-tree archive included new session tests and safe HTTP stage labels. Two recorded, hash-checked patches preserved the internal decode cause, then serialized URL values as strings and extended the tests. The final GitHub commit is validated separately by CI.",
+    "finalPatchedFiles": [
+      {
+        "path": "runtime-api/src/main/kotlin/io/smartdata/foundation/runtime/security/enterprise/EnterpriseSessionConfiguration.kt",
+        "sha256": "191a3e8fbf8511df8015bc8eb8356651090509b277c46cfcef8b168795adf6ab"
+      },
+      {
+        "path": "runtime-api/src/test/kotlin/io/smartdata/foundation/runtime/security/enterprise/EnterpriseSessionConversionTest.kt",
+        "sha256": "b6a8c8b678cbcec334410734dca4352664b21cefc4efc93da493db24fd8e5335"
+      }
+    ]
+  },
+  "environment": {
+    "javaRuntime": "25.0.4.1+1-LTS",
+    "postgresqlImageId": "sha256:1b064643612729e7604165f470518b16331f274cb9986f8d9045738e4de33bb6",
+    "cpuLimit": "Two pinned CPU cores, low-priority execution, one Gradle worker",
+    "gradleHeapMiB": 768,
+    "gpuAccelerationUsed": false
+  },
+  "execution": {
+    "tasks": ["test", ":runtime-api:integrationTest", "cyclonedxBom", ":runtime-api:bootJar"],
+    "exitCode": 0,
+    "elapsedSeconds": 99.81,
+    "unit": {"tests": 162, "suites": 26, "failures": 0, "errors": 0, "skipped": 0},
+    "integration": {"tests": 36, "suites": 4, "failures": 0, "errors": 0, "skipped": 0},
+    "sbomComponents": 255,
+    "httpsOidcPkceSharedSessionRestartMemberRevocationMarker": "PASS"
+  },
+  "integrationReports": [
+    {
+      "suite": "EnterpriseDirectoryIntegrationTest",
+      "tests": 6,
+      "junitXmlSha256": "67c154e7ac85624102267871798ebde21592d7406061f3b9b3c3b89b79cdf0de"
+    },
+    {
+      "suite": "EnterpriseHttpsIntegrationTest",
+      "tests": 1,
+      "junitXmlSha256": "2490c4a1437491759f537a805dc4235366fcd97f9ab684e769b2834bf897745e"
+    },
+    {
+      "suite": "PostgresPersistenceIntegrationTest",
+      "tests": 20,
+      "junitXmlSha256": "d0809c559df45218f88febe49caea426cb4b6bcfdf0112e7ffd20faa2f26300b"
+    },
+    {
+      "suite": "PostgresWorkspaceIntegrationTest",
+      "tests": 9,
+      "junitXmlSha256": "70a6c1df9e6399fda7efd810711d1ef08016660c91bba1526cadbe8b4981132e"
+    }
+  ],
+  "limitations": [
+    "The OIDC provider is an independent HTTPS protocol fixture, not a customer identity provider.",
+    "This run does not verify the enterprise login UI in a real browser.",
+    "Synthetic accounts do not establish that two distinct employees participated.",
+    "No production capacity, real business ROI, backup recovery or rolling-upgrade claim is made.",
+    "Raw logs, host details, credentials and business data are excluded from this public record."
+  ]
+}

@@ -27,7 +27,13 @@ import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHtt
 import org.springframework.session.web.http.CookieSerializer
 import org.springframework.session.web.http.DefaultCookieSerializer
 import org.springframework.web.filter.OncePerRequestFilter
+import tools.jackson.core.JsonGenerator
+import tools.jackson.databind.SerializationContext
+import tools.jackson.databind.ValueSerializer
 import tools.jackson.databind.json.JsonMapper
+import tools.jackson.databind.jsontype.TypeSerializer
+import tools.jackson.databind.module.SimpleModule
+import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
 import java.time.Duration
@@ -78,7 +84,8 @@ class EnterpriseSessionConfiguration {
 /** Framework allowlisted JSON, authenticated-encrypted at rest; never ObjectInputStream. */
 class EnterpriseSessionJsonCodec(encodedKey:String) {
     private val key:SecretKeySpec
-    private val mapper=JsonMapper.builder().addModules(SecurityJacksonModules.getModules(javaClass.classLoader)).build()
+    private val mapper=JsonMapper.builder().addModules(SecurityJacksonModules.getModules(javaClass.classLoader))
+        .addModule(SimpleModule("enterprise-session-url-text").addSerializer(URL::class.java,SessionUrlTextSerializer())).build()
     private val random=SecureRandom()
 
     init {
@@ -103,7 +110,10 @@ class EnterpriseSessionJsonCodec(encodedKey:String) {
             val result=mapper.readValue(cipher.doFinal(value.copyOfRange(16,value.size)),Any::class.java)
             allow(result)
             return result
-        } catch(_:Exception) { throw InvalidEnterpriseSessionException() }
+        } catch(failure:Exception) {
+            if(failure is InvalidEnterpriseSessionException) throw failure
+            throw InvalidEnterpriseSessionException(failure)
+        }
     }
     private fun allow(value:Any) {
         if(value.javaClass !in ROOT_TYPES || (value is String && value.length>200)) throw InvalidEnterpriseSessionException()
@@ -121,7 +131,17 @@ class EnterpriseSessionJsonCodec(encodedKey:String) {
     }
 }
 
-class InvalidEnterpriseSessionException:RuntimeException("Stored enterprise session is invalid")
+/** Persist verified OIDC URL claims as JSON text; URL type IDs remain forbidden on read. */
+private class SessionUrlTextSerializer:ValueSerializer<URL>() {
+    override fun serialize(value:URL,generator:JsonGenerator,context:SerializationContext) {
+        generator.writeString(value.toExternalForm())
+    }
+    override fun serializeWithType(value:URL,generator:JsonGenerator,context:SerializationContext,typeSerializer:TypeSerializer) {
+        serialize(value,generator,context)
+    }
+}
+
+class InvalidEnterpriseSessionException(cause:Throwable?=null):RuntimeException("Stored enterprise session is invalid",cause)
 
 class InvalidEnterpriseSessionFilter:OncePerRequestFilter() {
     override fun doFilterInternal(request:HttpServletRequest,response:HttpServletResponse,filterChain:FilterChain) {
