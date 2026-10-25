@@ -22,6 +22,8 @@ java {
 dependencies {
     implementation(project(":foundation-kernel"))
     implementation(platform(libs.spring.boot.bom))
+    // Temporal also uses Jackson 2; the SDK-only patch must cover the worker.
+    implementation(platform(libs.jackson2.bom))
     implementation(kotlin("reflect"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation(libs.temporal.sdk)

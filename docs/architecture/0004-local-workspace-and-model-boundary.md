@@ -55,7 +55,7 @@ API 是软件接口。Port 是内部接口，使业务服务不直接依赖某�
 
 ## JSON 依赖的明确例外
 
-业务对象继续使用 Jackson 3.2.1。Spring AI 2.0.1 的官方 OpenAI SDK 内部使用
+业务对象继续使用 Jackson 3，目前安全补丁为 3.2.4（见 [0005 安全补丁基线](0005-security-patch-baseline.md)）。Spring AI 2.0.1 的官方 OpenAI SDK 内部使用
 Jackson 2；两者包名不同，不能把 SDK 所需的旧类强制替成新类。保留这个传输层
 依赖并记录精确版本，CI 分别检查依赖、哈希与许可证。业务对象不进入 Jackson 2
 序列化路径。后续升级 SDK 时重新审查这个例外，不把“所有依赖已经统一为 3”写成事实。

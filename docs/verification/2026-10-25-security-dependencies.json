@@ -1,0 +1,264 @@
+{
+  "verifiedAtUtc": "2026-10-25T13:55:09.8422241Z",
+  "method": "Independent SHA-256 of Maven Central HTTPS artifacts; no redirects; existing hashes unchanged",
+  "scope": "Only additions compared with the supplied baseline. POM license declarations are recorded when present; inherited licenses require separate review.",
+  "artifactCount": 30,
+  "artifacts": [
+    {
+      "component": "com.fasterxml.jackson:jackson-base:2.21.8",
+      "artifact": "jackson-base-2.21.8.pom",
+      "sha256": "a413c74fe45c32b9ea7e8c418c84864aad8acb00776894abd66c96d372016fae",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/jackson-base/2.21.8/jackson-base-2.21.8.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.fasterxml.jackson:jackson-bom:2.21.8",
+      "artifact": "jackson-bom-2.21.8.pom",
+      "sha256": "972da60a83c46d0384950d87314282741f25591307eaedbb75e0891dc362caf3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/jackson-bom/2.21.8/jackson-bom-2.21.8.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "com.fasterxml.jackson.core:jackson-core:2.21.8",
+      "artifact": "jackson-core-2.21.8.jar",
+      "sha256": "604ef7765013daf5cde192e40bc4c8412c4ca93f4aaf7bf8e9a62fad1e1026bb",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.21.8/jackson-core-2.21.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.core:jackson-core:2.21.8",
+      "artifact": "jackson-core-2.21.8.module",
+      "sha256": "b35e983b2c33e1b06734c14db8b269d14e1ccbf4a34f776c55a2efe90215a326",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.21.8/jackson-core-2.21.8.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.core:jackson-databind:2.21.8",
+      "artifact": "jackson-databind-2.21.8.jar",
+      "sha256": "ad77f2285717e2f34c319d988b7c85783a47d0b33f33a501d1fcbf196e61bbaa",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.8/jackson-databind-2.21.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.core:jackson-databind:2.21.8",
+      "artifact": "jackson-databind-2.21.8.module",
+      "sha256": "8fcd5820a8d13936c82222f72a2ad70e2fa39fd1d7e907bc497b8f7875752ea6",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.21.8/jackson-databind-2.21.8.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.21.8",
+      "artifact": "jackson-datatype-jdk8-2.21.8.jar",
+      "sha256": "a7b796d0ec9d0a8d5cb683a01f2a70638dc968444c66031ed366b0ab70911d84",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.21.8/jackson-datatype-jdk8-2.21.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.21.8",
+      "artifact": "jackson-datatype-jdk8-2.21.8.module",
+      "sha256": "3cadf68a99a63aa7b78e93ee0761bd233c63e48371e6c247ae773d2c8d820376",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.21.8/jackson-datatype-jdk8-2.21.8.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.8",
+      "artifact": "jackson-datatype-jsr310-2.21.8.jar",
+      "sha256": "63a0854504aa90ed8f34f891aaa5259f9bd622bac115323559a38abdc1e81632",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.21.8/jackson-datatype-jsr310-2.21.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.8",
+      "artifact": "jackson-datatype-jsr310-2.21.8.module",
+      "sha256": "67eb0bd652b15005094b2a8f9dc611b322452d25c8efbe64d2c8e34d2ec9b4d1",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.21.8/jackson-datatype-jsr310-2.21.8.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.module:jackson-module-kotlin:2.21.8",
+      "artifact": "jackson-module-kotlin-2.21.8.jar",
+      "sha256": "a57e00d2f85cd62a5ecf1fa4446a6b2303116c57f62b130309f20ddd908a8aa5",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/module/jackson-module-kotlin/2.21.8/jackson-module-kotlin-2.21.8.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.module:jackson-module-kotlin:2.21.8",
+      "artifact": "jackson-module-kotlin-2.21.8.module",
+      "sha256": "95b6420272f39db3034428a1e39d0cd400aaf4ee2bbc24d674a5f5021a7947bc",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/module/jackson-module-kotlin/2.21.8/jackson-module-kotlin-2.21.8.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "com.fasterxml.jackson.module:jackson-modules-java8:2.21.8",
+      "artifact": "jackson-modules-java8-2.21.8.pom",
+      "sha256": "400541064048c3d9fd5614cfbc2d25a828258eb315b310348971ab46277a558e",
+      "officialUrl": "https://repo.maven.apache.org/maven2/com/fasterxml/jackson/module/jackson-modules-java8/2.21.8/jackson-modules-java8-2.21.8.pom",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-core:11.0.27",
+      "artifact": "tomcat-embed-core-11.0.27.jar",
+      "sha256": "b71785ff101c0df501064b3e3b8c4a02e4f9cc3047a7fa686c41fc4edc2f0cb4",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-core/11.0.27/tomcat-embed-core-11.0.27.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-core:11.0.27",
+      "artifact": "tomcat-embed-core-11.0.27.pom",
+      "sha256": "36b7fee41fa8eac7a9b9654aa3add6f71d1cde5f8a979828b1991ff7af379252",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-core/11.0.27/tomcat-embed-core-11.0.27.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-el:11.0.27",
+      "artifact": "tomcat-embed-el-11.0.27.jar",
+      "sha256": "206d6c6b1b6ce67b1c9af9ed0f6f43b4dbbc26164dd47bb49b9aad1583191f33",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-el/11.0.27/tomcat-embed-el-11.0.27.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-el:11.0.27",
+      "artifact": "tomcat-embed-el-11.0.27.pom",
+      "sha256": "d278f37f85457665d695197124cf7c2c29c28caedebebc99e9be99689f950945",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-el/11.0.27/tomcat-embed-el-11.0.27.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-websocket:11.0.27",
+      "artifact": "tomcat-embed-websocket-11.0.27.jar",
+      "sha256": "cbcd7ed6d7428fa71af6572d541a3ef74ceff42dfc523273950fe586062dc60f",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-websocket/11.0.27/tomcat-embed-websocket-11.0.27.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "org.apache.tomcat.embed:tomcat-embed-websocket:11.0.27",
+      "artifact": "tomcat-embed-websocket-11.0.27.pom",
+      "sha256": "0a6546463fc61ef2c1a3b08c24a8296fcc4f3683829fb4971efb8b1a081d94a9",
+      "officialUrl": "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-websocket/11.0.27/tomcat-embed-websocket-11.0.27.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "tools.jackson:jackson-base:3.2.4",
+      "artifact": "jackson-base-3.2.4.pom",
+      "sha256": "6c89b94983cbd8c13a63527249b9fbf9027a2bf340d8fbe517c42c5c6bece821",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/jackson-base/3.2.4/jackson-base-3.2.4.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "tools.jackson:jackson-bom:3.2.4",
+      "artifact": "jackson-bom-3.2.4.pom",
+      "sha256": "264046f38cab063138669a3b4c6ea1841600250494c33cf5880e2e39225ba313",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/jackson-bom/3.2.4/jackson-bom-3.2.4.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "Apache License, Version 2.0"
+      ]
+    },
+    {
+      "component": "tools.jackson.core:jackson-core:3.2.4",
+      "artifact": "jackson-core-3.2.4.jar",
+      "sha256": "494b9f5fccf008042d5a72c5bf00629b144c0ba7362a9864cbb02234c9772651",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/core/jackson-core/3.2.4/jackson-core-3.2.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.core:jackson-core:3.2.4",
+      "artifact": "jackson-core-3.2.4.module",
+      "sha256": "e59c103e28fd516ea1fe33d93baa84eae75b04b5532549da09a7bf407c0b7ce9",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/core/jackson-core/3.2.4/jackson-core-3.2.4.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.core:jackson-databind:3.2.4",
+      "artifact": "jackson-databind-3.2.4.jar",
+      "sha256": "c4af37223d5024f1294a5450598b01b65f30c53d9e906f02c3955ba1fb14a67d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/core/jackson-databind/3.2.4/jackson-databind-3.2.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.core:jackson-databind:3.2.4",
+      "artifact": "jackson-databind-3.2.4.module",
+      "sha256": "be4102a7945dd4e27589e25998702d7c412c376e84a7d6366b946ecdf8794aa7",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/core/jackson-databind/3.2.4/jackson-databind-3.2.4.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.dataformat:jackson-dataformat-yaml:3.2.4",
+      "artifact": "jackson-dataformat-yaml-3.2.4.jar",
+      "sha256": "b5edac76d73f983dee7bc929557aa68c38424b9a3b851caf8a382aaca67a9f32",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/dataformat/jackson-dataformat-yaml/3.2.4/jackson-dataformat-yaml-3.2.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.dataformat:jackson-dataformat-yaml:3.2.4",
+      "artifact": "jackson-dataformat-yaml-3.2.4.module",
+      "sha256": "97b4ecf53c311b68b862620f257119f772077cb58f31589afdf4f71e30351692",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/dataformat/jackson-dataformat-yaml/3.2.4/jackson-dataformat-yaml-3.2.4.module",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.dataformat:jackson-dataformats-text:3.2.4",
+      "artifact": "jackson-dataformats-text-3.2.4.pom",
+      "sha256": "ac32c66e4a4a76a00f05d2d67d13af22dc36ec66c161be3e5968609809469c3d",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/dataformat/jackson-dataformats-text/3.2.4/jackson-dataformats-text-3.2.4.pom",
+      "matches": true,
+      "declaredLicenses": [
+        "The Apache Software License, Version 2.0"
+      ]
+    },
+    {
+      "component": "tools.jackson.module:jackson-module-kotlin:3.2.4",
+      "artifact": "jackson-module-kotlin-3.2.4.jar",
+      "sha256": "e6dce11ad215bfa127181eaf23f5f0f365f284ae1b6784c0fd44f271d5fbcfe3",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/module/jackson-module-kotlin/3.2.4/jackson-module-kotlin-3.2.4.jar",
+      "matches": true,
+      "declaredLicenses": []
+    },
+    {
+      "component": "tools.jackson.module:jackson-module-kotlin:3.2.4",
+      "artifact": "jackson-module-kotlin-3.2.4.module",
+      "sha256": "3b9446a769becfacd707eda0e779d037e534b7c122997c00bd6222db1d0f1368",
+      "officialUrl": "https://repo.maven.apache.org/maven2/tools/jackson/module/jackson-module-kotlin/3.2.4/jackson-module-kotlin-3.2.4.module",
+      "matches": true,
+      "declaredLicenses": []
+    }
+  ]
+}

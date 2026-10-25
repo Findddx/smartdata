@@ -1,4 +1,5 @@
 import type { SourceDraft, WorkspaceState, WorkspaceReport } from "./types";
+import { localRolesEnabled } from "./localRoles";
 
 const ROOT = "/api/v1/workspace";
 export class WorkspaceApiError extends Error {
@@ -12,7 +13,7 @@ export class WorkspaceApiError extends Error {
 }
 async function request<T>(path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (import.meta.env.DEV || import.meta.env.VITE_DEMO_AUTH === "true")
+  if (localRolesEnabled())
     headers["X-Demo-Actor"] =
       localStorage.getItem("smartdata.localActor") ?? "admin";
   if (body !== undefined) {

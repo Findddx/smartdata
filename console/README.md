@@ -31,3 +31,7 @@ npm run build
 
 本机工作区使用明确标注的演示身份，尚不是企业认证。产品操作见[上手指南](../docs/operations/workspace-quickstart.md)，
 真实浏览器验收见[e2e 操作说明](e2e/README.md)。
+
+开发服务器自动启用演练身份。生产构建若要用于本机演示，须在构建时显式设置
+`VITE_DEMO_AUTH=true`；否则新工作区不显示身份切换，使用本机 API 默认的订单专员。
+这个布尔旗标不是密码，也不能在生产 API 上建立权限。

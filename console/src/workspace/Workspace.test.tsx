@@ -179,6 +179,7 @@ function renderWorkspace() {
   );
 }
 beforeEach(() => {
+  vi.unstubAllEnvs();
   localStorage.clear();
   sessionStorage.clear();
   window.location.hash = "";
@@ -194,6 +195,17 @@ beforeEach(() => {
 });
 
 describe("企业数据工作空间", () => {
+  it("does not advertise a role switch when the built console will not send rehearsal identities", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_DEMO_AUTH", "false");
+    localStorage.setItem("smartdata.localActor", "admin");
+    renderWorkspace();
+    await screen.findByRole("heading", { name: /每一个发现/ });
+    expect(
+      screen.queryByRole("combobox", { name: "本地演示身份" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("本地订单专员")).toBeInTheDocument();
+  });
   it("keeps failed connections explicit without silently substituting demonstration data", async () => {
     vi.mocked(workspaceClient.get).mockRejectedValue(new Error("服务不可用"));
     renderWorkspace();

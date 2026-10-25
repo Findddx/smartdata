@@ -3,7 +3,9 @@ kotlin = "2.3.21"
 spring-boot = "4.1.1"
 spring-ai = "2.0.1"
 temporal = "1.38.0"
-jackson = "3.2.1"
+jackson = "3.2.4"
+jackson2 = "2.21.8"
+tomcat = "11.0.27"
 networknt = "3.0.7"
 cyclonedx = "3.3.0"
 
@@ -24,6 +26,7 @@ temporal-sdk = { module = "io.temporal:temporal-sdk", version.ref = "temporal" }
 temporal-kotlin = { module = "io.temporal:temporal-kotlin", version.ref = "temporal" }
 temporal-testing = { module = "io.temporal:temporal-testing", version.ref = "temporal" }
 jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
+jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }

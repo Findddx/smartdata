@@ -61,7 +61,18 @@ foreach ($entry in $additions) {
         [uri]::EscapeDataString($entry.Artifact)
     $temporaryArtifact = [System.IO.Path]::GetTempFileName()
     try {
-        Invoke-WebRequest -Uri $url -OutFile $temporaryArtifact -UseBasicParsing -TimeoutSec 45 -MaximumRedirection 0
+        # Retry only the same official URL with the platform's normal TLS and
+        # certificate checks. A failed final handshake must still fail the gate.
+        for ($downloadAttempt = 1; $downloadAttempt -le 3; $downloadAttempt++) {
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $temporaryArtifact -UseBasicParsing -TimeoutSec 45 -MaximumRedirection 0
+                break
+            } catch {
+                if ($downloadAttempt -eq 3) { throw }
+                Write-Output "Retrying official download $downloadAttempt/3: $($entry.Artifact)"
+                Start-Sleep -Milliseconds 500
+            }
+        }
         $actualHash = (Get-FileHash -LiteralPath $temporaryArtifact -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($actualHash -ne $entry.Sha256) { throw "Official artifact hash mismatch: $url" }
         $licenses = @()

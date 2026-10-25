@@ -47,6 +47,7 @@ import {
   type FormEvent,
 } from "react";
 import { workspaceClient } from "./client";
+import { localRolesEnabled } from "./localRoles";
 import { DataFlow } from "./DataFlow";
 import { Dialog } from "./Dialog";
 import { SourceDialog } from "./SourceDialog";
@@ -204,8 +205,10 @@ export function Workspace() {
   const [resetOpen, setResetOpen] = useState(false);
   const [disconnectSource, setDisconnectSource] =
     useState<WorkspaceSource | null>(null);
-  const [localActor, setLocalActor] = useState(
-    () => localStorage.getItem("smartdata.localActor") ?? "admin",
+  const [localActor, setLocalActor] = useState(() =>
+    localRolesEnabled()
+      ? (localStorage.getItem("smartdata.localActor") ?? "admin")
+      : "order-specialist",
   );
   const [searchOpen, setSearchOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -549,25 +552,29 @@ export function Workspace() {
           <div className="sd-local-identity">
             <span className="sd-profile-dot" />
             <span>
-              <select
-                className="sd-identity-select"
-                aria-label="本地演示身份"
-                value={localActor}
-                disabled={pending}
-                onChange={(event) => {
-                  const actor = event.target.value;
-                  setLocalActor(actor);
-                  localStorage.setItem("smartdata.localActor", actor);
-                  setToast("本地演示身份已切换");
-                  void query.refetch();
-                }}
-              >
-                {LOCAL_ACTORS.map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              {localRolesEnabled() ? (
+                <select
+                  className="sd-identity-select"
+                  aria-label="本地演示身份"
+                  value={localActor}
+                  disabled={pending}
+                  onChange={(event) => {
+                    const actor = event.target.value;
+                    setLocalActor(actor);
+                    localStorage.setItem("smartdata.localActor", actor);
+                    setToast("本地演示身份已切换");
+                    void query.refetch();
+                  }}
+                >
+                  {LOCAL_ACTORS.map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <strong>本地订单专员</strong>
+              )}
               <small>本地演示 · 仅本机使用</small>
             </span>
             <ShieldCheck size={15} />
@@ -2323,7 +2330,11 @@ function Settings({
       <section className="sd-settings-section">
         <div>
           <h2>身份连接</h2>
-          <p>当前工作区使用本机演示身份，可在左侧下方切换角色来验证交接。</p>
+          <p>
+            {localRolesEnabled()
+              ? "当前工作区使用本机演示身份，可在左侧下方切换角色来验证交接。"
+              : "当前使用本机服务默认的订单专员身份；此构建未启用角色演练。"}
+          </p>
         </div>
         <p className="sd-bottom-note">
           <ShieldCheck size={14} />
@@ -2635,17 +2646,23 @@ function TaskDialog({
         )}
         {task.status === "COMPLETED" && (
           <div className="sd-review-controls">
-            <label>
-              本地复核身份
-              <select
-                value={localActor}
-                onChange={(event) => onActorChange(event.target.value)}
-                aria-label="本地复核身份"
-              >
-                <option value="admin">本地管理员</option>
-                <option value="sales-owner">业务负责人</option>
-              </select>
-            </label>
+            {localRolesEnabled() ? (
+              <label>
+                本地复核身份
+                <select
+                  value={localActor}
+                  onChange={(event) => onActorChange(event.target.value)}
+                  aria-label="本地复核身份"
+                >
+                  <option value="admin">本地管理员</option>
+                  <option value="sales-owner">业务负责人</option>
+                </select>
+              </label>
+            ) : (
+              <p>
+                当前控制台未启用演练身份切换，使用服务端默认的本地订单专员身份。
+              </p>
+            )}
             <p>
               本地演示可切换角色验证交接。实际部署须由企业登录系统识别不同审核人。
             </p>

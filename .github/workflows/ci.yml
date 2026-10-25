@@ -62,12 +62,19 @@ jobs:
           component_refs = [item["bom-ref"] for item in components]
           if len(component_refs) != len(set(component_refs)):
               raise SystemExit("duplicate component bom-ref in aggregate SBOM")
-          jackson_version = tomllib.loads(Path("gradle/libs.versions.toml").read_text(encoding="utf-8"))["versions"]["jackson"]
+          versions = tomllib.loads(Path("gradle/libs.versions.toml").read_text(encoding="utf-8"))["versions"]
+          jackson_version = versions["jackson"]
           jackson3 = [item for item in components if item.get("group", "").startswith("tools.jackson")]
           if not jackson3 or any(item["version"] != jackson_version for item in jackson3):
               raise SystemExit(f"all tools.jackson modules must use {jackson_version}")
           # The official OpenAI SDK uses the separate com.fasterxml Jackson 2
           # namespace; it does not replace the application's Jackson 3 DTO codec.
+          jackson2 = [item for item in components if item.get("group", "").startswith("com.fasterxml.jackson") and item.get("name") != "jackson-annotations"]
+          if not jackson2 or any(item["version"] != versions["jackson2"] for item in jackson2):
+              raise SystemExit(f"all Jackson 2 codecs/BOMs must use {versions['jackson2']}; shared annotations follow Jackson 3 BOM")
+          tomcat = [item for item in components if item.get("group", "").startswith("org.apache.tomcat")]
+          if not tomcat or any(item["version"] != versions["tomcat"] for item in tomcat):
+              raise SystemExit(f"all Tomcat components must use {versions['tomcat']}")
           root_ref = document.get("metadata", {}).get("component", {}).get("bom-ref")
           known_refs = set(component_refs)
           if root_ref:
@@ -312,4 +319,43 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Scan dependencies and configuration
-        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.74.0 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 /repo
+        # Build tools can affect shipped assets; include npm/Gradle development dependencies too.
+        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.74.0 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --include-dev-deps --ignore-unfixed --ignore-policy /repo/.github/trivy-demo-flags.rego --exit-code 1 /repo
+      - name: Ensure the demo flag exception still rejects secret instructions
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy-policy-fixture"
+          cat > "$RUNNER_TEMP/trivy-policy-fixture/Dockerfile" <<'DOCKERFILE'
+          FROM alpine:3.22
+          ARG VITE_DEMO_AUTH=fixture
+          ENV VITE_DEMO_AUTH=${VITE_DEMO_AUTH}
+          ARG OTHER_API_TOKEN=fixture
+          DOCKERFILE
+          set +e
+          docker run --rm -v "$RUNNER_TEMP/trivy-policy-fixture:/fixture:ro" -v "$PWD/.github:/policy:ro" \
+            aquasec/trivy:0.74.0 fs --scanners misconfig --severity HIGH,CRITICAL \
+            --ignore-policy /policy/trivy-demo-flags.rego --exit-code 1 --format json /fixture \
+            > "$RUNNER_TEMP/trivy-policy-negative.json"
+          scan_status=$?
+          set -e
+          test "$scan_status" -eq 1
+          python3 - "$RUNNER_TEMP/trivy-policy-negative.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          messages = {
+              finding["Message"]
+              for result in report.get("Results", [])
+              for finding in result.get("Misconfigurations", [])
+              if finding["ID"] == "DS-0031"
+          }
+          expected = {
+              'Possible exposure of secret env "VITE_DEMO_AUTH" in ARG',
+              'Possible exposure of secret env "OTHER_API_TOKEN" in ARG',
+          }
+          if not expected.issubset(messages):
+              raise SystemExit("demo exception suppressed a new secret instruction")
+          PY
