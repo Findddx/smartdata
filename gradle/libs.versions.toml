@@ -7,7 +7,7 @@ jackson = "3.2.4"
 jackson2 = "2.21.8"
 tomcat = "11.0.27"
 networknt = "3.0.7"
-cyclonedx = "3.3.0"
+cyclonedx = "3.5.1"
 testcontainers = "2.0.5"
 
 [libraries]
